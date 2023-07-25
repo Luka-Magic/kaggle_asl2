@@ -190,7 +190,6 @@ class Asl2Dataset(Dataset):
         # dropna
         not_nan_frame = ~np.isnan(np.mean(array, axis=(1, 2)))
         array = array[not_nan_frame, :, :]
-        print(len(array), not_nan_frame)
         # pad and truncate
         if len(array) < max_length:
             # pad
@@ -204,7 +203,6 @@ class Asl2Dataset(Dataset):
         else:
             # truncate
             array = array[:max_length]
-        assert array.shape[0] == max_length, print(array.shape[0])
         # dim (1, 2) -> 1
         array = array.reshape(max_length, n_landmarks * 2)
         # to tensor
@@ -231,7 +229,7 @@ class Asl2Dataset(Dataset):
         mirrered_array[:, self.array_dict['left_hand'], :] = invert_x(
             array[:, self.array_dict['right_hand'], :].copy())
         # lips
-        for key in ['lips_upper_outer', 'lips_lower_outer', 'lips_upper_inner', 'lips_lower_inner']:
+        for key in ['lips']:
             mirrered_array[:, self.array_dict[key], 0] = invert_x(
                 array[:, self.array_dict[key], 0])
         return mirrered_array
