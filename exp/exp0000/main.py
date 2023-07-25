@@ -470,7 +470,7 @@ def valid_function(
 def main():
     EXP_PATH = Path.cwd()
     with initialize_config_dir(config_dir=str(EXP_PATH / 'config')):
-        cfg = compose(config_name='config.yml')
+        cfg = compose(config_name='config.yaml')
 
     ROOT_DIR = Path.cwd().parents[2]
     exp_name = EXP_PATH.name
