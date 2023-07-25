@@ -65,7 +65,7 @@ class CTCLabelConverter(object):
 
     def __init__(self, char_to_idx):
         # character (str): set of the possible characters.
-        self.dict = {char: idx+1 for char, idx in char_to_idx.item()}
+        self.dict = {char: idx+1 for char, idx in char_to_idx.items()}
         self.character = ['[CTCblank]'] + list(self.dict.keys())
 
     def encode(self, text, batch_max_length=256):
