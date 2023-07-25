@@ -16,7 +16,7 @@ n_valid_per_epoch: 3
 batch_max_length: 256
 
 #####   Frame   ######################################
-use_types: [hand_left, hand_right, lips]
+use_types: [left_hand, right_hand, lips]
 hand_max_length: 574 # max: 574
 lips_max_length: 784 # max: 784
 padding: "constant_value" # ['edge', 'constant_value']
