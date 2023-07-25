@@ -193,7 +193,7 @@ class Asl2Dataset(Dataset):
         # pad and truncate
         if len(not_nan_frame) < max_length:
             # pad
-            pad_length = max_length - len(not_nan_frame)
+            pad_length = max_length - len(array)
             if self.padding == 'edge':
                 array = np.pad(
                     array, ((0, pad_length), (0, 0), (0, 0)), 'edge')
