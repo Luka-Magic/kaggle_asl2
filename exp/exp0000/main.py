@@ -373,7 +373,7 @@ def train_function(
         hand = batch['hand'].to(device).float()
         # lips = batch['lips'].to(device)
         label_tensor, len_label_tensor = ctc_converter.encode(
-            batch['label'], batch_max_length=cfg.batch_max_length).to(device)
+            batch['label'], batch_max_length=cfg.batch_max_length)
         label_tensor = label_tensor.to(device)
         len_label_tensor = len_label_tensor.to(device)
 
@@ -434,7 +434,7 @@ def valid_function(
         hand = batch['hand'].to(device).float()
         # lips = batch['lips'].to(device)
         label_tensor, len_label_tensor = ctc_converter.encode(
-            batch['label'], batch_max_length=cfg.batch_max_length).to(device)
+            batch['label'], batch_max_length=cfg.batch_max_length)
         label_tensor = label_tensor.to(device)
         len_label_tensor = len_label_tensor.to(device)
 
