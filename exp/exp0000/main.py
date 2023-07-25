@@ -27,21 +27,15 @@ import wandb
 # sklearn
 from sklearn.model_selection import KFold, StratifiedKFold, StratifiedGroupKFold
 
-# albumentations
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
-
 # pytorch
 import torch
 from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import Dataset, DataLoader, ConcatDataset
 from torch import optim
-from torchvision.transforms import Compose
 from torch.cuda.amp import autocast, GradScaler
 
-from exp.exp0000.utils import seed_everything, AverageMeter, get_lr, validation_metrics, CTCLabelConverter
-from model_ref import ModelFixedLen
+from utils import seed_everything, AverageMeter, get_lr, validation_metrics, CTCLabelConverter
 
 
 def split_data(cfg, train_csv_path):
@@ -536,12 +530,12 @@ def main():
 
         # optimizer
         if cfg.optimizer == 'AdamW':
-            optimizer = torch.optim.AdamW(
+            optimizer = optim.AdamW(
                 model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
 
         # scheduler
         if cfg.scheduler == 'OneCycleLR':
-            scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            scheduler = optim.lr_scheduler.OneCycleLR(
                 optimizer, total_steps=cfg.n_epochs * len(train_loader), max_lr=cfg.lr, pct_start=cfg.pct_start, div_factor=cfg.div_factor, final_div_factor=cfg.final_div_factor)
         else:
             scheduler = None
