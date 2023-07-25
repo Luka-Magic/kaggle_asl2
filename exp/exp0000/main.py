@@ -207,6 +207,7 @@ class Asl2Dataset(Dataset):
         array = array.reshape(max_length, n_landmarks * 2)
         # to tensor
         tensor = torch.from_numpy(array)
+        tensor = torch.permute(tensor, (1, 0))
         return tensor
 
     def mirrored(self, array):
