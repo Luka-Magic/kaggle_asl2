@@ -397,6 +397,8 @@ def train_function(
         label = label_tensor.detach().cpu().numpy()
         len_label = len_label_tensor.detach().cpu().numpy()
 
+        print(f'preds: ', preds.shape)
+        print(f'labels', label.shape)
         pred_text, label_text = \
             ctc_converter.decode(
                 preds, len_label), ctc_converter.decode(label, len_label)
