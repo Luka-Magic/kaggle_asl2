@@ -243,7 +243,9 @@ class Asl2Dataset(Dataset):
                 label: (seq_len)
         '''
         row = self.df.iloc[idx]
+        print(self.df.head(0))
         lmdb_id = row['lmdb_id']
+        print(lmdb_id)
         with self.env.begin(write=False) as txn:
             label_key = f'label-{str(lmdb_id).zfill(8)}'.encode()
             label = txn.get(label_key).decode('utf-8')
