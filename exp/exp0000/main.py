@@ -190,7 +190,6 @@ class Asl2Dataset(Dataset):
         # dropna
         not_nan_frame = ~np.isnan(np.mean(array, axis=(1, 2)))
         array = array[not_nan_frame, :, :]
-        print(len(not_nan_frame))
         # pad and truncate
         if len(not_nan_frame) < max_length:
             # pad
@@ -204,8 +203,8 @@ class Asl2Dataset(Dataset):
         else:
             # truncate
             array = array[:max_length]
+        assert array.shape[0] == max_length, print(array.shape[0])
         # dim (1, 2) -> 1
-        print((array.shape[0] * array.shape[1]) / 42)
         array = array.reshape(max_length, n_landmarks * 2)
         # to tensor
         tensor = torch.from_numpy()
