@@ -451,7 +451,7 @@ def valid_function(
 
         # to numpy
         preds = preds.argmax(dim=-1).permute(1, 0).detach().cpu().numpy()
-        label = label.detach().cpu().numpy()
+        label = label_tensor.detach().cpu().numpy()
         len_label = len_label_tensor.detach().cpu().numpy()
 
         pred_text, label_text = ctc_converter.decode(
@@ -504,8 +504,6 @@ def main():
     train_df = split_data(cfg, TRAIN_CSV_PATH)
     char_to_idx = json.load(
         open(RAW_DATA_DIR / 'character_to_prediction_index.json'))
-    idx_to_char = {v: k for k, v in char_to_idx.items()}
-
     # use landmark index
     use_landmarks = get_indices(cfg)
 
