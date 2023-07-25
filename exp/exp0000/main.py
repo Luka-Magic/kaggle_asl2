@@ -378,6 +378,7 @@ def train_function(
         len_label_tensor = len_label_tensor.to(device)
 
         with autocast():
+            print(hand.shape)
             preds = model(hand)  # (bs, seq_len, n_classes)
             preds = preds.log_softmax(2).permute(
                 1, 0, 2)  # (seq_len, bs, n_classes)
