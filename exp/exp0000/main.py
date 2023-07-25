@@ -190,8 +190,9 @@ class Asl2Dataset(Dataset):
         # dropna
         not_nan_frame = ~np.isnan(np.mean(array, axis=(1, 2)))
         array = array[not_nan_frame, :, :]
+        print(len(array), not_nan_frame)
         # pad and truncate
-        if len(not_nan_frame) < max_length:
+        if len(array) < max_length:
             # pad
             pad_length = max_length - len(array)
             if self.padding == 'edge':
@@ -207,7 +208,7 @@ class Asl2Dataset(Dataset):
         # dim (1, 2) -> 1
         array = array.reshape(max_length, n_landmarks * 2)
         # to tensor
-        tensor = torch.from_numpy()
+        tensor = torch.from_numpy(array)
         return tensor
 
     def mirrored(self, array):
