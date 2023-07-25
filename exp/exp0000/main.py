@@ -409,7 +409,7 @@ def train_function(
         train_accuracy.update(accuracy, bs)
 
         # pbar
-        pbar.set_description(f'【FOLD{fold} EPOCH {epoch}/{cfg.n_epochs}】')
+        pbar.set_description(f'【TRAIN EPOCH {epoch}/{cfg.n_epochs}】')
         pbar.set_postfix(OrderedDict(loss=train_loss.avg, norm_ld=train_norm_ld.avg,
                          accuracy=train_accuracy.avg, lr=get_lr(optimizer)))
 
@@ -464,7 +464,7 @@ def valid_function(
         valid_accuracy.update(accuracy, bs)
 
         # pbar
-        pbar.set_description(f'【FOLD{fold} EPOCH {epoch}/{cfg.n_epochs}】')
+        pbar.set_description(f'【VALID EPOCH {epoch}/{cfg.n_epochs}】')
         pbar.set_postfix(OrderedDict(loss=valid_loss.avg, norm_ld=valid_norm_ld.avg,
                          accuracy=valid_accuracy.avg))
 
