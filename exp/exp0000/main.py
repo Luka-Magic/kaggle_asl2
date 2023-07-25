@@ -219,6 +219,7 @@ class Asl2Dataset(Dataset):
 
         '''
         def invert_x(tmp):
+            print(tmp.shape)
             tmp = tmp.copy()
             tmp[:, :, 0] = -tmp[:, :, 0]
             return tmp
