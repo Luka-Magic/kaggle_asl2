@@ -38,6 +38,21 @@ from torch.cuda.amp import autocast, GradScaler
 from utils import seed_everything, AverageMeter, get_lr, validation_metrics, CTCLabelConverter
 
 
+def init_lmdb(lmdb_dir):
+    env = lmdb.open(str(lmdb_dir), max_readers=32,
+                    readonly=True, lock=False, readahead=False, meminit=False)
+    with env.begin(write=False) as txn:
+        n_samples = int(txn.get('n-samples'.encode()).decode('utf-8'))
+
+    for lmdb_id in tqdm(range(n_samples)):
+        lmdb_id = int(lmdb_id)
+        with env.begin(write=False) as txn:
+            label_key = f'label-{str(lmdb_id+1).zfill(8)}'.encode()
+            _ = txn.get(label_key).decode('utf-8')
+            array_key = f'array-{str(lmdb_id+1).zfill(8)}'.encode()
+            _ = np.frombuffer(txn.get(array_key), dtype=np.float16)
+
+
 def split_data(cfg, train_csv_path):
     '''
         StratifiedGroupKFold
@@ -148,13 +163,6 @@ class Asl2Dataset(Dataset):
         self.df = df
         self.env = lmdb.open(str(lmdb_dir), max_readers=32,
                              readonly=True, lock=False, readahead=False, meminit=False)
-        for lmdb_id in tqdm(df['lmdb_id'], total=len(df)):
-            lmdb_id = int(lmdb_id)
-            with self.env.begin(write=False) as txn:
-                label_key = f'label-{str(lmdb_id).zfill(8)}'.encode()
-                _ = txn.get(label_key).decode('utf-8')
-                array_key = f'array-{str(lmdb_id).zfill(8)}'.encode()
-                _ = np.frombuffer(txn.get(array_key), dtype=np.float16)
         self.array_dict = use_landmarks
         self.char_to_idx = char_to_idx
 
@@ -346,6 +354,7 @@ def train_function(
     model,
     optimizer,
     scheduler,
+    scheduler_step_frequence,
     loss_fn,
     scaler,
     device,
@@ -354,11 +363,6 @@ def train_function(
     train_loss = AverageMeter()
     train_norm_ld = AverageMeter()
     train_accuracy = AverageMeter()
-
-    if epoch == 1:
-        pbar = tqdm(enumerate(train_loader), total=len(train_loader))
-        for _ in pbar:
-            pass
 
     pbar = tqdm(enumerate(train_loader), total=len(train_loader))
     for _, batch in pbar:
@@ -382,7 +386,7 @@ def train_function(
         scaler.step(optimizer)
         scaler.update()
         optimizer.zero_grad()
-        if scheduler is not None:
+        if scheduler is not None and scheduler_step_frequence == 'step':
             scheduler.step()
 
         # to numpy
@@ -395,8 +399,8 @@ def train_function(
             ctc_converter.decode(
                 preds, len_label), ctc_converter.decode(label, len_label)
 
-        print([(pred_, label_)
-              for pred_, label_ in zip(pred_text, label_text)])
+        # print([(pred_, label_)
+        #       for pred_, label_ in zip(pred_text, label_text)])
 
         accuracy, norm_ld = validation_metrics(pred_text, label_text)
 
@@ -405,8 +409,9 @@ def train_function(
         train_accuracy.update(accuracy, bs)
 
         # pbar
-        pbar.set_description(
-            f'fold: {fold}, epoch: {epoch}, loss: {train_loss.avg:.4f}, norm_ld: {train_norm_ld.avg:.4f}, accuracy: {train_accuracy.avg:.4f}, lr: {get_lr(optimizer):.4f}')
+        pbar.set_description(f'【FOLD{fold} EPOCH {epoch}/{cfg.n_epochs}】')
+        pbar.set_postfix(OrderedDict(loss=train_loss.avg, norm_ld=train_norm_ld.avg,
+                         accuracy=train_accuracy.avg, lr=get_lr(optimizer)))
 
     return train_loss.avg, train_norm_ld.avg, train_accuracy.avg
 
@@ -459,8 +464,9 @@ def valid_function(
         valid_accuracy.update(accuracy, bs)
 
         # pbar
-        pbar.set_description(
-            f'fold: {fold}, epoch: {epoch}, loss: {valid_loss.avg:.4f}, norm_ld: {valid_norm_ld.avg:.4f}, accuracy: {valid_accuracy.avg:.4f}')
+        pbar.set_description(f'【FOLD{fold} EPOCH {epoch}/{cfg.n_epochs}】')
+        pbar.set_postfix(OrderedDict(loss=valid_loss.avg, norm_ld=valid_norm_ld.avg,
+                         accuracy=valid_accuracy.avg))
 
     return valid_loss.avg, valid_norm_ld.avg, valid_accuracy.avg
 
@@ -485,6 +491,11 @@ def main():
 
     # wandb
     wandb.login()
+
+    # lmdb init
+    # はじめに読み込みを行わないとdataloaderでとんでもない時間がかかる
+    if cfg.init_lmdb:
+        init_lmdb(LMDB_DIR)
 
     # device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -536,6 +547,7 @@ def main():
         if cfg.scheduler == 'OneCycleLR':
             scheduler = optim.lr_scheduler.OneCycleLR(
                 optimizer, total_steps=cfg.n_epochs * len(train_loader), max_lr=cfg.lr, pct_start=cfg.pct_start, div_factor=cfg.div_factor, final_div_factor=cfg.final_div_factor)
+            scheduler_step_frequence = cfg.scheduler_step_frequence
         else:
             scheduler = None
 
@@ -554,7 +566,7 @@ def main():
         }
         for epoch in range(1, cfg.n_epochs+1):
             train_loss, train_norm_ld, train_accuracy = train_function(
-                cfg, fold, epoch, train_loader, ctc_converter, model, optimizer, scheduler, loss_fn, scaler, device)
+                cfg, fold, epoch, train_loader, ctc_converter, model, optimizer, scheduler, scheduler_step_frequence, loss_fn, scaler, device)
             valid_loss, valid_norm_ld, valid_accuracy = valid_function(
                 cfg, fold, epoch, valid_loader, ctc_converter, model, loss_fn, device)
 

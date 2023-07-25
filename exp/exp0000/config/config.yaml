@@ -1,6 +1,7 @@
 #####   BASIC   ######################################
 debug: false
 use_wandb: false
+init_lmdb: false
 
 wandb_project: kaggle_asl2
 dataset_name: data0001
