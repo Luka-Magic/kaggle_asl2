@@ -4,7 +4,7 @@ import torch
 import warnings
 from typing import List, Dict, Union, Tuple, Any
 import math
-from levenshtein import distance
+from Levenshtein import distance
 
 
 def seed_everything(seed):

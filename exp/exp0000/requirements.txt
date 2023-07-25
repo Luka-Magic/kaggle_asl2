@@ -1,4 +1,4 @@
 hydra-core
 wandb
 lmdb
-levenshtein
+python-Levenshtein
