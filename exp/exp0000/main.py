@@ -190,6 +190,7 @@ class Asl2Dataset(Dataset):
         # dropna
         not_nan_frame = ~np.isnan(np.mean(array, axis=(1, 2)))
         array = array[not_nan_frame, :, :]
+        print(len(not_nan_frame))
         # pad and truncate
         if len(not_nan_frame) < max_length:
             # pad
