@@ -368,7 +368,7 @@ def train_function(
 
     pbar = tqdm(enumerate(train_loader), total=len(train_loader))
     for _, batch in pbar:
-        bs = len(batch.shape[0])
+        bs = batch.shape[0]
 
         hand = batch['hand'].to(device).float()
         # lips = batch['lips'].to(device)
@@ -429,7 +429,7 @@ def valid_function(
 
     pbar = tqdm(enumerate(valid_loader), total=len(valid_loader))
     for _, batch in pbar:
-        bs = len(batch.shape[0])
+        bs = batch.shape[0]
 
         hand = batch['hand'].to(device).float()
         # lips = batch['lips'].to(device)
