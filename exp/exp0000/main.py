@@ -148,7 +148,7 @@ class Asl2Dataset(Dataset):
         self.df = df
         self.env = lmdb.open(str(lmdb_dir), max_readers=32,
                              readonly=True, lock=False, readahead=False, meminit=False)
-        for lmdb_id in tqdm(df['lmdb_id'], total=len(df))):
+        for lmdb_id in tqdm(df['lmdb_id'], total=len(df)):
             lmdb_id = int(lmdb_id)
             with self.env.begin(write=False) as txn:
                 label_key = f'label-{str(lmdb_id).zfill(8)}'.encode()
