@@ -528,7 +528,7 @@ def main():
 
         # model
         model = create_model(
-            cfg, use_landmarks, n_classes=n_chars)
+            cfg, use_landmarks, n_classes=n_chars).to(device)
 
         # optimizer
         if cfg.optimizer == 'AdamW':
@@ -543,7 +543,8 @@ def main():
             scheduler = None
 
         # loss
-        loss_fn = nn.CTCLoss(blank=0, reduction='mean', zero_infinity=True)
+        loss_fn = nn.CTCLoss(blank=0, reduction='mean',
+                             zero_infinity=True).to(device)
 
         # scaler
         scaler = GradScaler()
