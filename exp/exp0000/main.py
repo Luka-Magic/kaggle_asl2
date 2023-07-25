@@ -393,12 +393,13 @@ def train_function(
             scheduler.step()
 
         # to numpy
-        preds = preds.argmax(dim=-1).detach().cpu().numpy()
+        preds = preds.argmax(
+            dim=-1).permute(1, 0).detach().cpu().numpy()  # (seq_len, bs)
         label = label_tensor.detach().cpu().numpy()
-        len_label = len_label_tensor.detach().cpu().numpy()
+        len_label = len_label_tensor.detach().cpu().numpy()  # (bs, label_len)
 
-        print(f'preds: ', preds.shape)
-        print(f'labels', label.shape)
+        # print(f'preds: ', preds.shape)  # (seq_len, bs)
+        # print(f'labels', label.shape)  # (bs, label_len)
         pred_text, label_text = \
             ctc_converter.decode(
                 preds, len_label), ctc_converter.decode(label, len_label)
@@ -455,7 +456,7 @@ def valid_function(
         len_label = len_label_tensor.detach().cpu().numpy()
 
         pred_text, label_text = ctc_converter.decode(
-            preds), ctc_converter.decode(label, len_label)
+            preds, len_label), ctc_converter.decode(label, len_label)
 
         accuracy, norm_ld = validation_metrics(pred_text, label_text)
 
