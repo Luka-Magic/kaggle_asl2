@@ -379,7 +379,6 @@ def train_function(
         len_label_tensor = len_label_tensor.to(device)
 
         with autocast():
-            print(hand.shape)
             preds = model(hand)  # (bs, seq_len, n_classes)
             preds = preds.log_softmax(2).permute(
                 1, 0, 2)  # (seq_len, bs, n_classes)
@@ -395,7 +394,7 @@ def train_function(
 
         # to numpy
         preds = preds.argmax(dim=-1).detach().cpu().numpy()
-        label = label.detach().cpu().numpy()
+        label = label_tensor.detach().cpu().numpy()
         len_label = len_label_tensor.detach().cpu().numpy()
 
         pred_text, label_text = ctc_converter.decode(
