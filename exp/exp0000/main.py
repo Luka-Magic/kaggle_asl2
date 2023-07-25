@@ -397,8 +397,9 @@ def train_function(
         label = label_tensor.detach().cpu().numpy()
         len_label = len_label_tensor.detach().cpu().numpy()
 
-        pred_text, label_text = ctc_converter.decode(
-            preds), ctc_converter.decode(label, len_label)
+        pred_text, label_text = \
+            ctc_converter.decode(
+                preds, len_label), ctc_converter.decode(label, len_label)
 
         accuracy, norm_ld = validation_metrics(pred_text, label_text)
 
