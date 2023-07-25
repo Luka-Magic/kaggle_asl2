@@ -340,7 +340,7 @@ def create_model(cfg, use_landmarks, n_classes):
     #     dim2=cfg.dim2,
     #     n_class=n_classes,
     # )
-    n_features = use_landmarks['right_hand'] * 2
+    n_features = len(use_landmarks['right_hand']) * 2
     model = Model(cfg.hand_max_length, n_features, n_classes)
     return model
 
