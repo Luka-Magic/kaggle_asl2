@@ -276,25 +276,6 @@ class Asl2Dataset(Dataset):
         return item
 
 
-# def collate_fn(batch):
-#     '''
-#         Returns:
-#             hand: (bs, seq_len, 20, 2)
-#             lips: (bs, seq_len, 11, 2)
-#             label: (bs, seq_len)
-#     '''
-#     hand = [item['hand'] for item in batch]
-#     lips = [item['lips'] for item in batch]
-#     label = [item['label'] for item in batch]
-
-#     hand = torch.stack(hand, dim=0)
-#     lips = torch.stack(lips, dim=0)
-#     label = torch.stack(label, dim=0)
-#     return hand, lips, label
-
-# prepare dataloader
-
-
 def prepare_dataloader(cfg, LMDB_DIR, char_to_idx, use_landmarks, train_fold_df, valid_fold_df):
     train_dataset = Asl2Dataset(
         cfg, train_fold_df, LMDB_DIR, char_to_idx, use_landmarks)
@@ -367,6 +348,11 @@ def train_function(
     train_norm_ld = AverageMeter()
     train_accuracy = AverageMeter()
 
+    if epoch == 1:
+        pbar = tqdm(enumerate(train_loader), total=len(train_loader))
+        for _ in pbar:
+            pass
+
     pbar = tqdm(enumerate(train_loader), total=len(train_loader))
     for _, batch in pbar:
         bs = len(batch['label'])
@@ -401,6 +387,9 @@ def train_function(
         pred_text, label_text = \
             ctc_converter.decode(
                 preds, len_label), ctc_converter.decode(label, len_label)
+
+        print([(pred_, label_)
+              for pred_, label_ in zip(pred_text, label_text)])
 
         accuracy, norm_ld = validation_metrics(pred_text, label_text)
 
