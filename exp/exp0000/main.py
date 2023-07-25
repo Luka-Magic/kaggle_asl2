@@ -216,23 +216,21 @@ class Asl2Dataset(Dataset):
                 2. x座標を反転
             Returns:
                 mirrered_array: (seq_len, 543, 2)
-
         '''
         def invert_x(tmp):
-            print(tmp.shape)
             tmp = tmp.copy()
             tmp[:, :, 0] = -tmp[:, :, 0]
             return tmp
         mirrered_array = array.copy()
         # hand
         mirrered_array[:, self.array_dict['right_hand'], :] = invert_x(
-            array[:, self.array_dict['left_hand'], :].copy())
+            array[:, self.array_dict['left_hand'], :])
         mirrered_array[:, self.array_dict['left_hand'], :] = invert_x(
-            array[:, self.array_dict['right_hand'], :].copy())
+            array[:, self.array_dict['right_hand'], :])
         # lips
         for key in ['lips']:
-            mirrered_array[:, self.array_dict[key], 0] = invert_x(
-                array[:, self.array_dict[key], 0])
+            mirrered_array[:, self.array_dict[key], :] = invert_x(
+                array[:, self.array_dict[key], :])
         return mirrered_array
 
     def __len__(self):
