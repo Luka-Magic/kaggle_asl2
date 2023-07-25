@@ -254,26 +254,27 @@ class Asl2Dataset(Dataset):
             # -100 -> nan
             array[array == -100] = np.nan
 
-        # check dominant hand
-        dominant_hand = self.check_dominant_hand(array)
-        if dominant_hand == 'left':
-            array = self.mirrored(array)
+        # # check dominant hand
+        # dominant_hand = self.check_dominant_hand(array)
+        # if dominant_hand == 'left':
+        #     array = self.mirrored(array)
 
-        # hand array
-        hand_tensor = self.array_process(
-            array, 'right_hand', self.hand_max_length)
+        # # hand array
+        # hand_tensor = self.array_process(
+        #     array, 'right_hand', self.hand_max_length)
 
-        # lips array
-        lips_tensor = self.array_process(
-            array, 'lips', self.lips_max_length)
+        # # lips array
+        # lips_tensor = self.array_process(
+        #     array, 'lips', self.lips_max_length)
 
-        # label to token and to tensor
-        item = {
-            'hand': hand_tensor,
-            'lips': lips_tensor,
-            'label': label
-        }
-        return item
+        # # label to token and to tensor
+        # item = {
+        #     'hand': hand_tensor,
+        #     'lips': lips_tensor,
+        #     'label': label
+        # }
+        # return item　
+        return None
 
 
 def prepare_dataloader(cfg, LMDB_DIR, char_to_idx, use_landmarks, train_fold_df, valid_fold_df):
