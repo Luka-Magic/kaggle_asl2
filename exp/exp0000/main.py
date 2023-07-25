@@ -189,6 +189,7 @@ class Asl2Dataset(Dataset):
 
         # dropna
         not_nan_frame = ~np.isnan(np.mean(array, axis=(1, 2)))
+        array = array[not_nan_frame, :, :]
         # pad and truncate
         if len(not_nan_frame) < max_length:
             # pad
@@ -205,7 +206,7 @@ class Asl2Dataset(Dataset):
         # dim (1, 2) -> 1
         array = array.reshape(max_length, n_landmarks * 2)
         # to tensor
-        tensor = torch.from_numpy(array[not_nan_frame]).float()
+        tensor = torch.from_numpy()
         return tensor
 
     def mirrored(self, array):
@@ -370,7 +371,7 @@ def train_function(
     for _, batch in pbar:
         bs = len(batch.shape[0])
 
-        hand = batch['hand'].to(device)
+        hand = batch['hand'].to(device).float()
         # lips = batch['lips'].to(device)
         label_tensor, len_label_tensor = ctc_converter.encode(
             batch['label'], batch_max_length=cfg.batch_max_length).to(device)
@@ -431,7 +432,7 @@ def valid_function(
     for _, batch in pbar:
         bs = len(batch.shape[0])
 
-        hand = batch['hand'].to(device)
+        hand = batch['hand'].to(device).float()
         # lips = batch['lips'].to(device)
         label_tensor, len_label_tensor = ctc_converter.encode(
             batch['label'], batch_max_length=cfg.batch_max_length).to(device)
