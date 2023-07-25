@@ -274,7 +274,7 @@ class Asl2Dataset(Dataset):
         #     'label': label
         # }
         # return item　
-        return torch.from_numpy(array[:, 0:100, :]), label
+        return torch.from_numpy(np.random.rand(3, 4, 5)), label
 
 
 def prepare_dataloader(cfg, LMDB_DIR, char_to_idx, use_landmarks, train_fold_df, valid_fold_df):
