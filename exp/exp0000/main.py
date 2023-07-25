@@ -300,9 +300,9 @@ def prepare_dataloader(cfg, LMDB_DIR, char_to_idx, use_landmarks, train_fold_df,
     valid_dataset = Asl2Dataset(
         cfg, valid_fold_df, LMDB_DIR, char_to_idx, use_landmarks)
     train_loader = DataLoader(
-        train_dataset, batch_size=cfg.batch_size, shuffle=True, num_workers=os.cpu_count())
+        train_dataset, batch_size=cfg.train_bs, shuffle=True, num_workers=os.cpu_count())
     valid_loader = DataLoader(
-        valid_dataset, batch_size=cfg.batch_size, shuffle=False, num_workers=os.cpu_count())
+        valid_dataset, batch_size=cfg.valid_bs, shuffle=False, num_workers=os.cpu_count())
     return train_loader, valid_loader
 
 # model
