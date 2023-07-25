@@ -121,8 +121,8 @@ def get_indices(cfg):
         cheek_right=[205],
         cheek_left=[425],
 
-        hand_left=list(range(468, 489)),
-        hand_right=list(range(522, 543)),
+        left_hand=list(range(468, 489)),
+        right_hand=list(range(522, 543)),
 
         body=[11, 23, 24, 12],
         left_arm=[501, 503, 505],
@@ -167,8 +167,8 @@ class Asl2Dataset(Dataset):
                 array: (seq_len, 20, 2)
         '''
 
-        right_hand = array[:, self.array_dict['hand_right'], :]
-        left_hand = array[:, self.array_dict['hand_left'], :]
+        right_hand = array[:, self.array_dict['right_hand'], :]
+        left_hand = array[:, self.array_dict['left_hand'], :]
         right_nan_length = np.isnan(right_hand[:, 0, 0]).sum()
         left_nan_length = np.isnan(left_hand[:, 0, 0]).sum()
         return 'left' if right_nan_length > left_nan_length else 'right'
@@ -223,10 +223,10 @@ class Asl2Dataset(Dataset):
             return tmp
         mirrered_array = array.copy()
         # hand
-        mirrered_array[:, self.array_dict['hand_right'], :] = invert_x(
-            array[:, self.array_dict['hand_left'], :].copy())
-        mirrered_array[:, self.array_dict['hand_left'], :] = invert_x(
-            array[:, self.array_dict['hand_right'], :].copy())
+        mirrered_array[:, self.array_dict['right_hand'], :] = invert_x(
+            array[:, self.array_dict['left_hand'], :].copy())
+        mirrered_array[:, self.array_dict['left_hand'], :] = invert_x(
+            array[:, self.array_dict['right_hand'], :].copy())
         # lips
         for key in ['lips_upper_outer', 'lips_lower_outer', 'lips_upper_inner', 'lips_lower_inner']:
             mirrered_array[:, self.array_dict[key], 0] = invert_x(
