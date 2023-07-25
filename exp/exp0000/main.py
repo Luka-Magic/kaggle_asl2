@@ -203,7 +203,7 @@ class Asl2Dataset(Dataset):
             # truncate
             array = array[:max_length]
         # dim (1, 2) -> 1
-        array = array.reshape(max_length, n_landmarks)
+        array = array.reshape(max_length, n_landmarks * 2)
         # to tensor
         tensor = torch.from_numpy(array[not_nan_frame]).float()
         return tensor
