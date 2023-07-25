@@ -394,12 +394,10 @@ def train_function(
 
         # to numpy
         preds = preds.argmax(
-            dim=-1).permute(1, 0).detach().cpu().numpy()  # (seq_len, bs)
+            dim=-1).permute(1, 0).detach().cpu().numpy()  # (bs, seq_len)
         label = label_tensor.detach().cpu().numpy()
         len_label = len_label_tensor.detach().cpu().numpy()  # (bs, label_len)
 
-        # print(f'preds: ', preds.shape)  # (seq_len, bs)
-        # print(f'labels', label.shape)  # (bs, label_len)
         pred_text, label_text = \
             ctc_converter.decode(
                 preds, len_label), ctc_converter.decode(label, len_label)
@@ -451,7 +449,7 @@ def valid_function(
             loss = loss_fn(preds, label_tensor, preds_size, len_label_tensor)
 
         # to numpy
-        preds = preds.argmax(dim=-1).detach().cpu().numpy()
+        preds = preds.argmax(dim=-1).permute(1, 0).detach().cpu().numpy()
         label = label.detach().cpu().numpy()
         len_label = len_label_tensor.detach().cpu().numpy()
 
