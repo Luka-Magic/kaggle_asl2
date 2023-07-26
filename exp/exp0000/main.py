@@ -388,7 +388,8 @@ def train_function(
         pbar.set_description(f'【TRAIN EPOCH {epoch}/{cfg.n_epochs}】')
         pbar.set_postfix(OrderedDict(loss=train_loss.avg, norm_ld=train_norm_ld.avg,
                          accuracy=train_accuracy.avg, lr=get_lr(optimizer)))
-
+    if scheduler is not None and scheduler_step_frequence == 'epoch':
+        scheduler.step()
     return train_loss.avg, train_norm_ld.avg, train_accuracy.avg
 
 
