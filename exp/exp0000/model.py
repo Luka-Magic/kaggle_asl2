@@ -24,17 +24,38 @@ class BidirectionalLSTM(nn.Module):
         return output
 
 
+class RSUnit1D(nn.Module):
+    def __init__(self, in_dim, kernel_size=3, padding=1,
+                 padding_mode='zeros', actf=torch.nn.ReLU()):
+        super(RSUnit1D, self).__init__()
+        self.layer0 = nn.Conv1d(in_dim, in_dim, kernel_size=kernel_size,
+                                padding=padding, padding_mode=padding_mode, bias=False)
+        self.bn0 = nn.BatchNorm1d(in_dim)
+        self.layer1 = nn.Conv1d(in_dim, in_dim, kernel_size=kernel_size,
+                                padding=padding, padding_mode=padding_mode, bias=False)
+        self.bn1 = nn.BatchNorm1d(in_dim)
+        self.actf = actf
+
+    def forward(self, x):
+        h = self.actf(self.bn0(self.layer0(x)))
+        h = self.bn1(self.layer1(h))
+        return x + h
+
+
 class Model(nn.Module):
     def __init__(self, seq_len, n_features, n_class):
         super(Model, self).__init__()
-        self.bn0 = nn.BatchNorm1d(n_features)  # 各landmarkでmean,std=0,1にする
+        # self.actf = torch.nn.LeakyReLU(negative_slope=0.1)
+        self.actf = nn.ReLU()
         self.conv1 = nn.Conv1d(n_features, 128, 3, padding=1)
-        self.bn1 = nn.BatchNorm1d(128)
-        self.conv2 = nn.Conv1d(128, 128, 3, padding=1)
-        self.bn2 = nn.BatchNorm1d(128)
-
+        self.bn1 = nn.BatchNorm1d(128)  # 各landmarkでmean,std=0,1にする
+        self.conv2 = RSUnit1D(128, 3, padding=1)
+        self.conv3 = RSUnit1D(128, 3, padding=1)
+        self.conv4 = RSUnit1D(128, 3, padding=1)
+        self.conv5 = nn.Conv1d(
+            128, 256, kernel_size=1, padding=0, bias=True)
         self.sequence_models = nn.Sequential(
-            BidirectionalLSTM(128, 256, 256),
+            BidirectionalLSTM(256, 256, 256),
             BidirectionalLSTM(256, 256, 256),
         )
         self.fc = nn.Linear(256, n_class)
@@ -45,9 +66,12 @@ class Model(nn.Module):
             output: (bs, 576(seq_len), 59(n_classes))
         '''
         # x = self.bn0(x)
-        x = F.relu(self.bn1(self.conv1(x)))
-        x = F.relu(self.bn2(self.conv2(x)))  # (bs, 42, 576)
-        x = x.permute(0, 2, 1)  # (bs, 576, 42) B T C
+        x = self.actf(self.bn1(self.conv1(x)))
+        x = self.conv2(x)
+        x = self.conv3(x)
+        x = self.conv4(x)
+        x = self.conv5(x)  # (bs, 256, 576)
+        x = x.permute(0, 2, 1)  # (bs, 576, 256) B T C
         x = self.sequence_models(x)
-        x = self.fc(x)  # (bs, 42, 59)
+        x = self.fc(x)  # (bs, 576, 60)
         return x
