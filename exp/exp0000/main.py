@@ -43,12 +43,13 @@ def init_lmdb(lmdb_dir):
     '''
         ただただ1回lmdbのデータを全て取り出す。
         これをしないとdataloaderでとんでもない時間がかかる。
-        (この処理は約5分、そのマシンで初めて実行するときだけこの関数を実行する(cfg.init_lmdb=Trueにする))
+        (この処理は約5分、そのマシンで初めて実行するときだけこの関数を実行する(argsに指定する))
     '''
+    assert lmdb_dir.exists(), f'{lmdb_dir} does not exist'
     env = lmdb.open(str(lmdb_dir), max_readers=32,
                     readonly=True, lock=False, readahead=False, meminit=False)
     with env.begin(write=False) as txn:
-        n_samples = int(txn.get('n-samples'.encode()).decode('utf-8'))
+        n_samples = int(txn.get('num-samples'.encode()).decode('utf-8'))
 
     for lmdb_id in tqdm(range(n_samples)):
         lmdb_id = int(lmdb_id)
@@ -445,7 +446,7 @@ def valid_function(
 
 
 # main
-def main():
+def main(is_first_learning):
     EXP_PATH = Path.cwd()
     with initialize_config_dir(config_dir=str(EXP_PATH / 'config')):
         cfg = compose(config_name='config.yaml')
@@ -459,16 +460,16 @@ def main():
     SAVE_DIR = ROOT_DIR / 'outputs' / exp_name
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
+    # lmdb init
+    # はじめに読み込みを行わないとdataloaderでとんでもない時間がかかる
+    if is_first_learning:
+        init_lmdb(LMDB_DIR)
+
     # seed
     seed_everything(cfg.seed)
 
     # wandb
     wandb.login()
-
-    # lmdb init
-    # はじめに読み込みを行わないとdataloaderでとんでもない時間がかかる
-    if cfg.init_lmdb:
-        init_lmdb(LMDB_DIR)
 
     # device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -566,4 +567,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    is_first_learning = sys.argv[1]
+    main(is_first_learning)
