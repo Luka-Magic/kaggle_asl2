@@ -36,9 +36,15 @@ from torch import optim
 from torch.cuda.amp import autocast, GradScaler
 
 from utils import seed_everything, AverageMeter, get_lr, validation_metrics, CTCLabelConverter
+from model import Model
 
 
 def init_lmdb(lmdb_dir):
+    '''
+        ただただ1回lmdbのデータを全て取り出す。
+        これをしないとdataloaderでとんでもない時間がかかる。
+        (この処理は約5分、そのマシンで初めて実行するときだけこの関数を実行する(cfg.init_lmdb=Trueにする))
+    '''
     env = lmdb.open(str(lmdb_dir), max_readers=32,
                     readonly=True, lock=False, readahead=False, meminit=False)
     with env.begin(write=False) as txn:
@@ -305,46 +311,13 @@ def prepare_dataloader(cfg, LMDB_DIR, char_to_idx, use_landmarks, train_fold_df,
 # model
 
 
-class Model(nn.Module):
-    def __init__(self, seq_len, n_features, n_class):
-        super(Model, self).__init__()
-        self.bn0 = nn.BatchNorm1d(n_features)  # 各landmarkでmean,std=0,1にする
-        self.conv1 = nn.Conv1d(n_features, 128, 3, padding=1)
-        self.bn1 = nn.BatchNorm1d(128)
-        self.conv2 = nn.Conv1d(128, 128, 3, padding=1)
-        self.bn2 = nn.BatchNorm1d(128)
-        self.fc = nn.Linear(128, n_class)
-
-    def forward(self, x):
-        '''
-            input: (bs, 42, 576)
-            output: (bs, 576(seq_len), 59(n_classes))
-        '''
-        x = self.bn0(x)
-        h = F.relu(self.bn1(self.conv1(x)))
-        h = F.relu(self.bn2(self.conv2(h)))  # (bs, 42, 576)
-        h = h.permute(0, 2, 1)  # (bs, 576, 42)
-        h = self.fc(h)  # (bs, 42, 59)
-        return h
-
-
 def create_model(cfg, use_landmarks, n_classes):
-    # model = ModelFixedLen(
-    #     in_dim_H=cfg.hand_max_length,
-    #     in_dim_L=cfg.lips_max_length,
-    #     dim1_H=cfg.dim1_H,
-    #     dim1_L=cfg.dim1_L,
-    #     dim2=cfg.dim2,
-    #     n_class=n_classes,
-    # )
     n_features = len(use_landmarks['right_hand']) * 2
     model = Model(cfg.hand_max_length, n_features, n_classes)
     return model
 
 
 # train
-
-
 def train_function(
     cfg,
     fold,
@@ -508,6 +481,9 @@ def main():
     use_landmarks = get_indices(cfg)
 
     for fold in range(cfg.n_folds):
+        if fold not in cfg.use_fold:
+            continue
+
         # wandb init
         wandb.config = OmegaConf.to_container(
             cfg, resolve=True, throw_on_missing=True)
