@@ -43,7 +43,7 @@ def init_lmdb(lmdb_dir):
     '''
         ただただ1回lmdbのデータを全て取り出す。
         これをしないとdataloaderでとんでもない時間がかかる。
-        (この処理は約5分、そのマシンで初めて実行するときだけこの関数を実行する(argsに指定する))
+        (この処理は約10分、そのマシンで初めて実行するときだけこの関数を実行する(argsに指定する))
     '''
     assert lmdb_dir.exists(), f'{lmdb_dir} does not exist'
     env = lmdb.open(str(lmdb_dir), max_readers=32,
@@ -197,7 +197,8 @@ class Asl2Dataset(Dataset):
 
     def array_process(self, array, landmark, max_length):
         '''
-            - delete nan frame and to tensor
+            - slice landmark array
+            - delete nan frame
             - pad or truncate
             - to tensor
 
@@ -206,13 +207,14 @@ class Asl2Dataset(Dataset):
             Returns:
                 array: (max_length, n_landmarks, 2)
         '''
+        # slice
         array = array[:, self.array_dict[landmark], :].copy()
         n_landmarks = len(self.array_dict[landmark])
 
         # dropna
         not_nan_frame = ~np.isnan(np.mean(array, axis=(1, 2)))
         array = array[not_nan_frame, :, :]
-        # pad and truncate
+        # pad or truncate
         if len(array) < max_length:
             # pad
             pad_length = max_length - len(array)
@@ -460,6 +462,9 @@ def main(is_first_learning):
     SAVE_DIR = ROOT_DIR / 'outputs' / exp_name
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
+    # wandb
+    wandb.login()
+
     # lmdb init
     # はじめに読み込みを行わないとdataloaderでとんでもない時間がかかる
     if is_first_learning:
@@ -467,9 +472,6 @@ def main(is_first_learning):
 
     # seed
     seed_everything(cfg.seed)
-
-    # wandb
-    wandb.login()
 
     # device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -545,6 +547,16 @@ def main(is_first_learning):
             valid_loss, valid_norm_ld, valid_accuracy = valid_function(
                 cfg, fold, epoch, valid_loader, ctc_converter, model, loss_fn, device)
 
+            print('-*-'*30)
+            print(f'【FOLD {fold} EPOCH {epoch}/{cfg.n_epochs}】')
+            print('    train_loss: {:.4f}'.format(train_loss))
+            print('    train_norm_ld: {:.4f}'.format(train_norm_ld))
+            print('    train_accuracy: {:.4f}'.format(train_accuracy))
+            print('    valid_loss: {:.4f}'.format(valid_loss))
+            print('    valid_norm_ld: {:.4f}'.format(valid_norm_ld))
+            print('    valid_accuracy: {:.4f}'.format(valid_accuracy))
+            print('-*-'*30)
+
             # wandb log
             wandb.log({
                 'epoch': epoch,
@@ -554,6 +566,7 @@ def main(is_first_learning):
                 'valid_loss': valid_loss,
                 'valid_norm_ld': valid_norm_ld,
                 'valid_accuracy': valid_accuracy,
+                'lr': get_lr(optimizer)
             })
 
             if valid_norm_ld > best_score['levenshtein']:

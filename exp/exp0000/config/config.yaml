@@ -5,7 +5,7 @@ use_wandb: true
 wandb_project: kaggle_asl2
 dataset_name: data0001
 seed: 77
-n_epochs: 10
+n_epochs: 25
 split_method: StratifiedGroupKFold
 n_folds: 5
 use_fold: [0] # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -23,6 +23,10 @@ padding: "constant_value" # ['edge', 'constant_value']
 padding_value: 0 # padding in ['constant_value']
 frame_drop_rate: 0.0
 
+##### DataLoader #####################################
+train_bs: 64
+valid_bs: 64
+
 #####   Model   ######################################
 dim1_H: 128
 dim1_L: 64
@@ -34,7 +38,7 @@ pretrained_model_exp_name:
 
 ##### Optimizer ######################################
 optimizer: AdamW
-lr: 1e-3
+lr: 1e-2
 weight_decay: 1e-6
 
 ##### Scheduler ######################################
@@ -45,18 +49,5 @@ T_mult: 1 # CAWR
 eta_min: 1e-9 # CAWR
 
 pct_start: 0.1 # OCLR
-div_factor: 100. # OCLR
+div_factor: 25. # OCLR
 final_div_factor: 1000. # OCLR
-
-##### Image Info #####################################
-# img_h: 560
-# img_w: 560
-
-##### Text Info ######################################
-# max_length: 1024
-# max_patches: 1024
-
-##### DataLoader #####################################
-train_bs: 16
-valid_bs: 16
-num_workers: 8
