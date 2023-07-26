@@ -23,8 +23,8 @@ padding_value: 0 # padding in ['constant_value']
 frame_drop_rate: 0.0
 
 ##### DataLoader #####################################
-train_bs: 64
-valid_bs: 64
+train_bs: 16
+valid_bs: 16
 
 #####   Model   ######################################
 dim1_H: 128
