@@ -449,7 +449,10 @@ def valid_function(
 
 
 # main
-def main(is_first_learning):
+def main(
+    is_first_learning,
+    use_wandb
+):
     EXP_PATH = Path.cwd()
     with initialize_config_dir(config_dir=str(EXP_PATH / 'config')):
         cfg = compose(config_name='config.yaml')
@@ -496,7 +499,7 @@ def main(is_first_learning):
             entity='luka-magic',
             name=f'{exp_name}',
             config=wandb.config,
-            mode='online' if cfg.use_wandb else 'disabled'
+            mode='online' if use_wandb else 'disabled'
         )
         wandb.config.fold = fold
 
@@ -582,4 +585,5 @@ def main(is_first_learning):
 
 if __name__ == '__main__':
     is_first_learning = int(sys.argv[1])
-    main(is_first_learning)
+    use_wandb = int(sys.argv[1])
+    main(is_first_learning, use_wandb)
