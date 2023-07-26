@@ -499,7 +499,7 @@ def main(
             entity='luka-magic',
             name=f'{exp_name}',
             config=wandb.config,
-            mode='online' if use_wandb else 'disabled'
+            mode='online' if use_wandb == 1 else 'disabled'
         )
         wandb.config.fold = fold
 
