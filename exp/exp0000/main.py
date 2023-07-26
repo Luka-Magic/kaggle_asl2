@@ -580,5 +580,5 @@ def main(is_first_learning):
 
 
 if __name__ == '__main__':
-    is_first_learning = sys.argv[1]
+    is_first_learning = int(sys.argv[1])
     main(is_first_learning)
