@@ -533,11 +533,12 @@ def main(
                 optimizer, total_steps=cfg.n_epochs * len(train_loader), max_lr=cfg.lr, pct_start=cfg.pct_start, div_factor=cfg.div_factor, final_div_factor=cfg.final_div_factor)
             scheduler_step_frequence = cfg.scheduler_step_frequence
         elif cfg.scheduler == 'CosineAnnealingWarmRestarts':
-            optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            scheduler_step_frequence = optim.lr_scheduler.CosineAnnealingWarmRestarts(
                 optimizer, cfg.T_0, T_mult=cfg.T_mult, eta_min=cfg.eta_min)
             scheduler_step_frequence = cfg.scheduler_step_frequence
         else:
             scheduler = None
+            scheduler_step_frequence = None
 
         # loss
         loss_fn = nn.CTCLoss(blank=0, reduction='mean',
@@ -592,5 +593,5 @@ def main(
 
 if __name__ == '__main__':
     is_first_learning = int(sys.argv[1])
-    use_wandb = int(sys.argv[1])
+    use_wandb = int(sys.argv[2])
     main(is_first_learning, use_wandb)
