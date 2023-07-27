@@ -31,18 +31,18 @@ dim1_H: 128
 dim1_L: 64
 dim2: 512
 
-restart: true
+restart:
 pretrained_model_from_net_path:
 pretrained_model_exp_name:
 
 ##### Optimizer ######################################
-lr: 1e-3
+lr: 1e-2
 optimizer: AdamW
 weight_decay: 1e-6
 
 ##### Scheduler ######################################
-scheduler: OneCycleLR # OneCycleLR, huggingface_scheduler
-scheduler_step_frequence: step
+scheduler: CosineAnnealingWarmRestarts # OneCycleLR, CosineAnnealingWarmRestarts
+scheduler_step_frequence: epoch # step, epoch
 T_0: ${n_epochs} # CAWR
 T_mult: 1 # CAWR
 eta_min: 1e-9 # CAWR
