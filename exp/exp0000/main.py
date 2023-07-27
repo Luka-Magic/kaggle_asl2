@@ -491,6 +491,9 @@ def main(
         if fold not in cfg.use_fold:
             continue
 
+        print('wandb: ')
+        print(use_wandb)
+        print('online' if use_wandb == 1 else 'disabled')
         # wandb init
         wandb.config = OmegaConf.to_container(
             cfg, resolve=True, throw_on_missing=True)
@@ -531,7 +534,7 @@ def main(
             scheduler_step_frequence = cfg.scheduler_step_frequence
         elif cfg.scheduler == 'CosineAnnealingWarmRestarts':
             optim.lr_scheduler.CosineAnnealingWarmRestarts(
-                optimizer, cfg.T_0, T_mult=cfg.T_multi, eta_min=cfg.eta_min)
+                optimizer, cfg.T_0, T_mult=cfg.T_mult, eta_min=cfg.eta_min)
             scheduler_step_frequence = cfg.scheduler_step_frequence
         else:
             scheduler = None
