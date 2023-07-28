@@ -24,6 +24,21 @@ class BidirectionalLSTM(nn.Module):
         return output
 
 
+class LRUnit1D(nn.Module):
+    def __init__(self, in_dim, actf=torch.nn.ReLU()):
+        super(LRUnit1D, self).__init__()
+        self.layer0 = nn.Linear(in_dim, in_dim, bias=False)
+        self.bn0 = nn.BatchNorm1d(in_dim)
+        self.layer1 = nn.Linear(in_dim, in_dim, bias=False)
+        self.bn1 = nn.BatchNorm1d(in_dim)
+        self.actf = actf
+
+    def forward(self, x):
+        h = self.actf(self.bn0(self.layer0(x)))
+        h = self.bn1(self.layer1(h))
+        return x + h
+
+
 class RSUnit1D(nn.Module):
     def __init__(self, in_dim, kernel_size=3, padding=1,
                  padding_mode='zeros', actf=torch.nn.ReLU()):
@@ -45,27 +60,27 @@ class RSUnit1D(nn.Module):
 class Model(nn.Module):
     def __init__(self, seq_len, n_features, n_class):
         super(Model, self).__init__()
-        # self.actf = torch.nn.LeakyReLU(negative_slope=0.1)
-        self.actf = nn.ReLU()
+        self.actf = nn.LeakyReLU(negative_slope=0.1)
+        # self.bn0 = nn.BatchNorm1d(n_features)  # 各landmarkでmean,std=0,1にする
         self.conv1 = nn.Conv1d(n_features, 128, 3, padding=1)
         self.bn1 = nn.BatchNorm1d(128)  # 各landmarkでmean,std=0,1にする
-        self.conv2 = RSUnit1D(128, 3, padding=1)
-        self.conv3 = RSUnit1D(128, 3, padding=1)
-        self.conv4 = RSUnit1D(128, 3, padding=1)
+        self.conv2 = RSUnit1D(128, 3, padding=1, actf=self.actf)
+        self.conv3 = RSUnit1D(128, 3, padding=1, actf=self.actf)
+        self.conv4 = RSUnit1D(128, 3, padding=1, actf=self.actf)
         self.conv5 = nn.Conv1d(
             128, 256, kernel_size=1, padding=0, bias=True)
         self.sequence_models = nn.Sequential(
             BidirectionalLSTM(256, 256, 256),
             BidirectionalLSTM(256, 256, 256),
         )
-        self.fc = nn.Linear(256, n_class)
+        self.linear0 = nn.Linear(256, 128)
+        self.fc = nn.Linear(128, n_class)
 
     def forward(self, x):
         '''
             input: (bs, 42, 576)
             output: (bs, 576(seq_len), 59(n_classes))
         '''
-        # x = self.bn0(x)
         x = self.actf(self.bn1(self.conv1(x)))
         x = self.conv2(x)
         x = self.conv3(x)
@@ -73,5 +88,6 @@ class Model(nn.Module):
         x = self.conv5(x)  # (bs, 256, 576)
         x = x.permute(0, 2, 1)  # (bs, 576, 256) B T C
         x = self.sequence_models(x)
-        x = self.fc(x)  # (bs, 576, 60)
+        x = self.linear0(x)
+        x = self.fc(x)
         return x
