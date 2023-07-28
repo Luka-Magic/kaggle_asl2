@@ -51,9 +51,9 @@ def init_lmdb(lmdb_dir):
     with env.begin(write=False) as txn:
         n_samples = int(txn.get('num-samples'.encode()).decode('utf-8'))
 
-    for lmdb_id in tqdm(range(n_samples)):
-        lmdb_id = int(lmdb_id)
-        with env.begin(write=False) as txn:
+    with env.begin(write=False) as txn:
+        for lmdb_id in tqdm(range(n_samples)):
+            lmdb_id = int(lmdb_id)
             label_key = f'label-{str(lmdb_id+1).zfill(8)}'.encode()
             _ = txn.get(label_key).decode('utf-8')
             array_key = f'array-{str(lmdb_id+1).zfill(8)}'.encode()
@@ -350,7 +350,6 @@ def train_function(
             batch['label'], batch_max_length=cfg.batch_max_length)
         label_tensor = label_tensor.to(device)
         len_label_tensor = len_label_tensor.to(device)
-
         with autocast():
             preds = model(hand)  # (bs, seq_len, n_classes)
             preds = preds.log_softmax(2).permute(

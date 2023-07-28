@@ -89,5 +89,6 @@ class Model(nn.Module):
         x = x.permute(0, 2, 1)  # (bs, 576, 256) B T C
         x = self.sequence_models(x)
         x = self.linear0(x)
+        x = self.actf(x)
         x = self.fc(x)
         return x
