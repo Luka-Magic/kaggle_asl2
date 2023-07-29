@@ -35,7 +35,7 @@ pretrained_model_from_net_path:
 pretrained_model_exp_name:
 
 ##### Optimizer ######################################
-lr: 1e-2
+lr: 1e-3
 optimizer: AdamW
 weight_decay: 1e-6
 
