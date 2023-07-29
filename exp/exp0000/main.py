@@ -65,6 +65,15 @@ def split_data(cfg, train_csv_path):
 
     train_df = pd.read_csv(train_csv_path)
 
+    # filtering
+    train_df['phrase_length'] = train_df['phrase'].map(len)
+    train_df['n_frames_hand_per_char'] = train_df['n_frames_hand'] / \
+        train_df['phrase_length']
+    raw_len = len(train_df)
+    train_df = train_df.query('n_frames_hand_per_char > 3.0')
+    print(
+        f'filtered {raw_len - len(train_df)} samples, {len(train_df)} samples left')
+
     num_set = set([str(i) for i in range(10)])
     tel_set = set(['-', '+'])
     url_set = set(['/', '.'])
