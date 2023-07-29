@@ -1,23 +1,19 @@
 # basic
 import sys
 import gc
+import math
 import numpy as np
 import pandas as pd
 from pathlib import Path
 import json
 import os
-import zipfile
 import random
 from tqdm import tqdm
 from collections import OrderedDict, Counter
 import lmdb
-import six
-from PIL import Image
-from typing import List, Dict, Union, Tuple, Any
-import cv2
+# from typing import List, Dict, Union, Tuple, Any
 
 # hydra
-import hydra
 from omegaconf import OmegaConf
 from hydra.experimental import compose, initialize_config_dir
 
@@ -227,8 +223,15 @@ class Asl2Dataset(Dataset):
         else:
             # truncate
             array = array[:max_length]
+
+        # normalization x and y
+        for i in range(2):
+            array_1d = array[:, :, i].reshape(-1)
+            array[:, :, i] = (
+                array[:, :, i] - np.nanmean(array_1d)) / np.nanstd(array_1d)
         # dim (1, 2) -> 1
         array = array.reshape(max_length, n_landmarks * 2)
+
         # to tensor
         tensor = torch.from_numpy(array)
         tensor = torch.permute(tensor, (1, 0))
