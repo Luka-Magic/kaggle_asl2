@@ -70,7 +70,7 @@ def split_data(cfg, train_csv_path):
     train_df['n_frames_hand_per_char'] = train_df['n_frames_hand'] / \
         train_df['phrase_length']
     raw_len = len(train_df)
-    train_df = train_df.query('n_frames_hand_per_char > 3.0')
+    train_df = train_df.query('n_frames_hand_per_char > 3.0').reset_index()
     print(
         f'filtered {raw_len - len(train_df)} samples, {len(train_df)} samples left')
 
