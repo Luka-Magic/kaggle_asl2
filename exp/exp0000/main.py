@@ -353,7 +353,7 @@ def train_function(
     train_accuracy = AverageMeter()
 
     pbar = tqdm(enumerate(train_loader), total=len(train_loader))
-    for _, batch in pbar:
+    for i, batch in pbar:
         bs = len(batch['label'])
 
         hand = batch['hand'].to(device).float()
@@ -385,9 +385,9 @@ def train_function(
         pred_text, label_text = \
             ctc_converter.decode(
                 preds, len_label), ctc_converter.decode(label, len_label)
-
-        # print([(pred_, label_)
-        #       for pred_, label_ in zip(pred_text, label_text)])
+        if i < 10:
+            print([(pred_, label_)
+                  for pred_, label_ in zip(pred_text, label_text)])
 
         accuracy, norm_ld = validation_metrics(pred_text, label_text)
 
