@@ -597,6 +597,7 @@ def main(
                 torch.save(model.state_dict(), SAVE_DIR /
                            f'best_levenshtein_fold{fold}.pth')
                 wandb.run.summary['best_levenshtein'] = best_score['levenshtein']
+        wandb.finish()
 
 
 if __name__ == '__main__':
