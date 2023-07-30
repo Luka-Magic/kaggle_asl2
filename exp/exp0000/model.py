@@ -61,7 +61,7 @@ class Model(nn.Module):
     def __init__(self, seq_len, n_features, n_class):
         super(Model, self).__init__()
         self.actf = nn.LeakyReLU(negative_slope=0.1)
-        # self.bn0 = nn.BatchNorm1d(n_features)  # 各landmarkでmean,std=0,1にする
+        self.bn0 = nn.BatchNorm1d(n_features)  # 各landmarkでmean,std=0,1にする
         self.conv1 = nn.Conv1d(n_features, 128, 3, padding=1)
         self.bn1 = nn.BatchNorm1d(128)  # 各landmarkでmean,std=0,1にする
         self.conv2 = RSUnit1D(128, 3, padding=1, actf=self.actf)
@@ -81,6 +81,7 @@ class Model(nn.Module):
             input: (bs, 42, 576)
             output: (bs, 576(seq_len), 59(n_classes))
         '''
+        x = self.bn0(x)
         x = self.actf(self.bn1(self.conv1(x)))
         x = self.conv2(x)
         x = self.conv3(x)
