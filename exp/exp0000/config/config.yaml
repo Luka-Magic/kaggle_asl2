@@ -22,8 +22,8 @@ padding_value: 0 # padding in ['constant_value']
 frame_drop_rate: 0.0
 
 ##### DataLoader #####################################
-train_bs: 64
-valid_bs: 64
+train_bs: 32
+valid_bs: 32
 
 #####   Model   ######################################
 dim1_H: 128
@@ -35,14 +35,15 @@ pretrained_model_from_net_path:
 pretrained_model_exp_name:
 
 ##### Optimizer ######################################
-lr: 1e-2
+lr: 1e-3
 optimizer: AdamW
 weight_decay: 1e-6
 
 ##### Scheduler ######################################
 scheduler: CosineAnnealingWarmRestarts # OneCycleLR, CosineAnnealingWarmRestarts
 scheduler_step_frequence: epoch # step, epoch
-T_0: ${n_epochs} # CAWR
+T_0: 10 # CAWR
+# T_0: ${n_epochs} # CAWR
 T_mult: 1 # CAWR
 eta_min: 1e-7 # CAWR
 
