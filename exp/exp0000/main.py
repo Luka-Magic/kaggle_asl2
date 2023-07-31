@@ -426,7 +426,7 @@ def valid_function(
     valid_accuracy = AverageMeter()
 
     pbar = tqdm(enumerate(valid_loader), total=len(valid_loader))
-    for _, batch in pbar:
+    for i, batch in pbar:
         bs = len(batch['label'])
 
         hand = batch['hand'].to(device).float()
