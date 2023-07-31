@@ -385,7 +385,7 @@ def train_function(
         pred_text, label_text = \
             ctc_converter.decode(
                 preds, len_label), ctc_converter.decode(label, len_label)
-        if i < 10:
+        if i < 5:
             print([(pred_, label_)
                   for pred_, label_ in zip(pred_text, label_text)])
 
@@ -444,7 +444,9 @@ def valid_function(
 
         pred_text, label_text = ctc_converter.decode(
             preds, len_label), ctc_converter.decode(label, len_label)
-
+        if i < 5:
+            print([(pred_, label_)
+                  for pred_, label_ in zip(pred_text, label_text)])
         accuracy, norm_ld = validation_metrics(pred_text, label_text)
 
         valid_loss.update(loss.item(), bs)
