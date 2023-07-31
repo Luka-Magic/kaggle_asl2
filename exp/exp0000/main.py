@@ -219,6 +219,17 @@ class Asl2Dataset(Dataset):
         # dropna
         not_nan_frame = ~np.isnan(np.mean(array, axis=(1, 2)))
         array = array[not_nan_frame, :, :]
+
+        # normalization x and y
+        for i in range(2):
+            array_1d = array[:, :, i].reshape(-1)
+            array[:, :, i] = (
+                array[:, :, i] - np.nanmean(array_1d)) / np.nanstd(array_1d)
+
+        # no frame
+        if len(array) == 0:
+            array = np.zeros((max_length, n_landmarks, 2))
+
         # pad or truncate
         if len(array) < max_length:
             # pad
@@ -233,11 +244,6 @@ class Asl2Dataset(Dataset):
             # truncate
             array = array[:max_length]
 
-        # normalization x and y
-        for i in range(2):
-            array_1d = array[:, :, i].reshape(-1)
-            array[:, :, i] = (
-                array[:, :, i] - np.nanmean(array_1d)) / np.nanstd(array_1d)
         # dim (1, 2) -> 1
         array = array.reshape(max_length, n_landmarks * 2)
 

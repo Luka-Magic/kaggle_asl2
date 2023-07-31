@@ -17,7 +17,7 @@ batch_max_length: 32
 use_types: [left_hand, right_hand, lips]
 hand_max_length: 128 # max: 574
 lips_max_length: 16 # max: 784
-padding: "edge" # ['edge', 'constant_value']
+padding: "edge" # ['edge', 'constant']
 padding_value: 0 # padding in ['constant_value']
 frame_drop_rate: 0.0
 
