@@ -184,7 +184,7 @@ class Asl2Dataset(Dataset):
         self.padding = cfg.padding
         self.padding_value = cfg.padding_value if self.padding == 'constant_value' else None
         self.frame_drop_rate = cfg.frame_drop_rate
-        self.aug_hand_param = cfg.aug_hand_param
+        self.aug_hand_params = cfg.aug_hand_params
 
     def check_dominant_hand(self, array):
         '''
@@ -203,10 +203,10 @@ class Asl2Dataset(Dataset):
         return 'left' if right_nan_length > left_nan_length else 'right'
 
     def apply_aug_right_hand(self, array, debug=False):
-        angle = random.gauss(0, self.aug_hand_param["angle"] / 2)
-        scale = random.gauss(1, self.aug_hand_param["scale"] / 2)
-        shift_x = random.gauss(0, self.aug_hand_param["shift_x"] / 2)
-        shift_y = random.gauss(0, self.aug_hand_param["shift_y"] / 2)
+        angle = random.gauss(0, self.aug_hand_params["angle"] / 2)
+        scale = random.gauss(1, self.aug_hand_params["scale"] / 2)
+        shift_x = random.gauss(0, self.aug_hand_params["shift_x"] / 2)
+        shift_y = random.gauss(0, self.aug_hand_params["shift_y"] / 2)
 
         amt = AffineMatTools()
         amt.scale(scale)
@@ -232,6 +232,7 @@ class Asl2Dataset(Dataset):
         '''
             - slice landmark array
             - delete nan frame
+            - if right_hand => apply_aug_hand
             - pad or truncate
             - to tensor
 
@@ -249,8 +250,8 @@ class Asl2Dataset(Dataset):
         not_nan_frame = ~np.isnan(np.mean(array, axis=(1, 2)))
         array = array[not_nan_frame, :, :]
 
+        # apply aug
         if landmark == 'right_hand':
-            # apply_aug_hand
             array = self.apply_aug_right_hand(array)
 
         # normalization x and y
