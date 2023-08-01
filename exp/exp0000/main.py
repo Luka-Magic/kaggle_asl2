@@ -212,6 +212,7 @@ class Asl2Dataset(Dataset):
             Returns:
                 array: (max_length, n_landmarks, 2)
         '''
+
         # slice
         array = array[:, self.array_dict[landmark], :].copy()
         n_landmarks = len(self.array_dict[landmark])
