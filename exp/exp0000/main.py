@@ -32,6 +32,7 @@ from torch import optim
 from torch.cuda.amp import autocast, GradScaler
 
 from utils import seed_everything, AverageMeter, get_lr, validation_metrics, CTCLabelConverter
+from augment import AffineMatTools
 from model import Model
 
 
@@ -183,6 +184,7 @@ class Asl2Dataset(Dataset):
         self.padding = cfg.padding
         self.padding_value = cfg.padding_value if self.padding == 'constant_value' else None
         self.frame_drop_rate = cfg.frame_drop_rate
+        self.aug_hand_param = cfg.aug_hand_param
 
     def check_dominant_hand(self, array):
         '''
@@ -199,6 +201,32 @@ class Asl2Dataset(Dataset):
         right_nan_length = np.isnan(right_hand[:, 0, 0]).sum()
         left_nan_length = np.isnan(left_hand[:, 0, 0]).sum()
         return 'left' if right_nan_length > left_nan_length else 'right'
+
+    def apply_aug_right_hand(self, array, debug=False):
+        angle = random.gauss(0, self.aug_hand_param["angle"] / 2)
+        scale = random.gauss(1, self.aug_hand_param["scale"] / 2)
+        shift_x = random.gauss(0, self.aug_hand_param["shift_x"] / 2)
+        shift_y = random.gauss(0, self.aug_hand_param["shift_y"] / 2)
+
+        amt = AffineMatTools()
+        amt.scale(scale)
+        amt.rotation_degree(angle)
+        amt.shift(shift_x, shift_y)
+
+        hand = array[:, self.array_dict['right_hand'], :].copy()
+
+        aug_hand = hand - hand[:, 0][:, None]
+
+        # aug_hand_z = aug_hand[:, :, 2][:, :, None]
+        # aug_hand = aug_hand[:, :, :2]
+        aug_hand = amt.transform(aug_hand)
+        # aug_hand = np.concatenate((aug_hand, aug_hand_z), axis=2)
+        aug_hand = aug_hand + hand[:, 0][:, None]
+        aug_hand = aug_hand.astype(np.float32)
+        print(aug_hand.shape)
+
+        array[:, self.array_dict['right_hand'], :] = aug_hand
+        return aug_hand
 
     def array_process(self, array, landmark, max_length):
         '''
@@ -220,6 +248,10 @@ class Asl2Dataset(Dataset):
         # dropna
         not_nan_frame = ~np.isnan(np.mean(array, axis=(1, 2)))
         array = array[not_nan_frame, :, :]
+
+        if landmark == 'right_hand':
+            # apply_aug_hand
+            array = self.apply_aug_right_hand(array)
 
         # normalization x and y
         for i in range(2):

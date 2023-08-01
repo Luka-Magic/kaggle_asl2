@@ -21,6 +21,12 @@ padding: "edge" # ['edge', 'constant']
 padding_value: 0 # padding in ['constant_value']
 frame_drop_rate: 0.0
 
+aug_hand_params:
+  angle: 7.
+  scale: 0.1
+  shift_x: 0.016
+  shift_y: 0.053
+
 ##### DataLoader #####################################
 train_bs: 32
 valid_bs: 32
