@@ -202,7 +202,7 @@ class Asl2Dataset(Dataset):
         left_nan_length = np.isnan(left_hand[:, 0, 0]).sum()
         return 'left' if right_nan_length > left_nan_length else 'right'
 
-    def apply_aug_right_hand(self, array, debug=False):
+    def apply_aug_right_hand(self, hand, debug=False):
         angle = random.gauss(0, self.aug_hand_params["angle"] / 2)
         scale = random.gauss(1, self.aug_hand_params["scale"] / 2)
         shift_x = random.gauss(0, self.aug_hand_params["shift_x"] / 2)
@@ -213,8 +213,6 @@ class Asl2Dataset(Dataset):
         amt.rotation_degree(angle)
         amt.shift(shift_x, shift_y)
 
-        hand = array[:, self.array_dict['right_hand'], :].copy()
-
         aug_hand = hand - hand[:, 0][:, None]
 
         # aug_hand_z = aug_hand[:, :, 2][:, :, None]
@@ -223,9 +221,6 @@ class Asl2Dataset(Dataset):
         # aug_hand = np.concatenate((aug_hand, aug_hand_z), axis=2)
         aug_hand = aug_hand + hand[:, 0][:, None]
         aug_hand = aug_hand.astype(np.float32)
-        print(aug_hand.shape)
-
-        array[:, self.array_dict['right_hand'], :] = aug_hand
         return aug_hand
 
     def array_process(self, array, landmark, max_length):
