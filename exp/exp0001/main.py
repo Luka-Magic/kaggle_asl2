@@ -31,9 +31,13 @@ from torch.utils.data import Dataset, DataLoader, ConcatDataset
 from torch import optim
 from torch.cuda.amp import autocast, GradScaler
 
-from utils import seed_everything, AverageMeter, get_lr, validation_metrics, CTCLabelConverter
+from utils import seed_everything, AverageMeter, get_lr, validation_metrics, LabelConverter
 from augment import AffineMatTools
-from model import Model
+from transformers import Transformer
+
+PAD_TOKEN = 'P'
+SOS_TOKEN = 'S'
+EOS_TOKEN = 'E'
 
 
 def init_lmdb(lmdb_dir):
@@ -171,16 +175,19 @@ def get_indices(cfg):
 
 
 class Asl2Dataset(Dataset):
-    def __init__(self, cfg, df, lmdb_dir, char_to_idx, use_landmarks):
+    def __init__(self, cfg, df, lmdb_dir, converter, use_landmarks):
         self.cfg = cfg
         self.df = df
         self.env = lmdb.open(str(lmdb_dir), max_readers=32,
                              readonly=True, lock=False, readahead=False, meminit=False)
         self.array_dict = use_landmarks
-        self.char_to_idx = char_to_idx
+        self.converter = converter
 
         self.hand_max_length = cfg.hand_max_length
-        self.lips_max_length = cfg.lips_max_length
+        # self.lips_max_length = cfg.lips_max_length
+        self.phrase_max_length = cfg.phrase_max_length
+        self.max_length = max(self.hand_max_length, self.phrase_max_length)
+
         self.padding = cfg.padding
         self.padding_value = cfg.padding_value if self.padding == 'constant_value' else None
         self.frame_drop_rate = cfg.frame_drop_rate
@@ -225,16 +232,23 @@ class Asl2Dataset(Dataset):
 
     def array_process(self, array, landmark, max_length):
         '''
-            - slice landmark array
-            - delete nan frame
-            - if right_hand => apply_aug_hand
-            - pad or truncate
-            - to tensor
+        - slice landmark array
+        - delete nan frame
+        - if right_hand => apply_aug_hand
+        - pad or truncate
+        - to tensor
 
-            Input:
-                array: (seq_len, n_landmarks, 2)
-            Returns:
-                array: (max_length, n_landmarks, 2)
+        Parameters
+        ----------
+        array: np.array
+            shape: (seq_len, n_landmarks, 2)
+
+        Returns
+        -------
+        tensor: torch.tensor
+            shape: (max_length, n_landmarks, 2)
+        tensor_length: torch.tensor
+            shape: (1)
         '''
 
         # slice
@@ -259,6 +273,9 @@ class Asl2Dataset(Dataset):
         if len(array) == 0:
             array = np.zeros((max_length, n_landmarks, 2))
 
+        # landmark length
+        landmark_length = min(len(array), max_length)
+
         # pad or truncate
         if len(array) < max_length:
             # pad
@@ -277,9 +294,9 @@ class Asl2Dataset(Dataset):
         array = array.reshape(max_length, n_landmarks * 2)
 
         # to tensor
-        tensor = torch.from_numpy(array)
-        tensor = torch.permute(tensor, (1, 0))  # (input_size, seq_len)
-        return tensor
+        tensor = torch.from_numpy(array)  # (seq_len, input_size)
+
+        return tensor, landmark_length
 
     def mirrored(self, array):
         '''
@@ -304,6 +321,46 @@ class Asl2Dataset(Dataset):
             mirrered_array[:, self.array_dict[key], :] = invert_x(
                 array[:, self.array_dict[key], :])
         return mirrered_array
+
+    def create_mask(self, landmark_length, label_length):
+        NEG_INFTY = -1e9
+
+        # Creates a tensor with all values = True
+        look_ahead_mask = torch.full([self.max_length, self.max_length], True)
+        # Upper traingle = True only
+        look_ahead_mask = torch.triu(look_ahead_mask, diagonal=1)
+        # print(look_ahead_mask)
+        encoder_padding_mask = torch.full(
+            [self.max_length, self.max_length], False)
+        decoder_padding_mask_self_attention = torch.full(
+            [self.max_length, self.max_length], False)
+        decoder_padding_mask_cross_attention = torch.full(
+            [self.max_length, self.max_length], False)
+        # print(encoder_padding_mask)
+
+        frame_chars_to_padding_mask = np.arange(
+            landmark_length + 1, self.max_length)
+        eng_chars_to_padding_mask = np.arange(
+            label_length + 1, self.max_length)
+
+        encoder_padding_mask[:, frame_chars_to_padding_mask] = True
+        encoder_padding_mask[frame_chars_to_padding_mask, :] = True
+
+        decoder_padding_mask_self_attention[:,
+                                            eng_chars_to_padding_mask] = True
+        decoder_padding_mask_self_attention[eng_chars_to_padding_mask, :] = True
+
+        decoder_padding_mask_cross_attention[:,
+                                             eng_chars_to_padding_mask] = True
+        decoder_padding_mask_cross_attention[frame_chars_to_padding_mask, :] = True
+
+        encoder_self_attention_mask = torch.where(
+            encoder_padding_mask, NEG_INFTY, 0)
+        decoder_self_attention_mask = torch.where(
+            look_ahead_mask + decoder_padding_mask_self_attention, NEG_INFTY, 0)
+        decoder_cross_attention_mask = torch.where(
+            decoder_padding_mask_cross_attention, NEG_INFTY, 0)
+        return encoder_self_attention_mask, decoder_self_attention_mask, decoder_cross_attention_mask
 
     def __len__(self):
         return len(self.df)
@@ -331,27 +388,47 @@ class Asl2Dataset(Dataset):
             array = self.mirrored(array)
 
         # hand array
-        hand_tensor = self.array_process(
+        hand_tensor, hand_length = self.array_process(
             array, 'right_hand', self.hand_max_length)
 
-        # lips array
-        lips_tensor = self.array_process(
-            array, 'lips', self.lips_max_length)
+        # # lips array
+        # lips_tensor = self.array_process(
+        #     array, 'lips', self.lips_max_length)
 
         # label to token and to tensor
+        input_label_tensor, label_length = self.converter(label, add_sos=True)
+        target_tensor, _ = self.converter(label, add_sos=False)
+
+        # create mask
+        encoder_self_attention_mask, decoder_self_attention_mask, decoder_cross_attention_mask = self.create_mask(
+            hand_length, label_length)
+
         item = {
             'hand': hand_tensor,
-            'lips': lips_tensor,
-            'label': label
+            'input_label': input_label_tensor,
+            'target': target_tensor,
+            'target_length': len(label),
+            'enc_self_attn_msk': encoder_self_attention_mask,
+            'dec_self_attn_msk': decoder_self_attention_mask,
+            'dec_cross_attn_msk': decoder_cross_attention_mask,
         }
         return item
 
+# collate_fn
 
-def prepare_dataloader(cfg, LMDB_DIR, char_to_idx, use_landmarks, train_fold_df, valid_fold_df):
+
+# def collate_fn(batch):
+#     # pad label
+#     max_len = max([len(item['label']) for item in batch])
+#     for item in batch:
+#         pad_len = max_len - len(item['label'])
+#         item['label'] = item['label'] + [0] * pad_len
+
+def prepare_dataloader(cfg, LMDB_DIR, converter, use_landmarks, train_fold_df, valid_fold_df):
     train_dataset = Asl2Dataset(
-        cfg, train_fold_df, LMDB_DIR, char_to_idx, use_landmarks)
+        cfg, train_fold_df, LMDB_DIR, converter, use_landmarks)
     valid_dataset = Asl2Dataset(
-        cfg, valid_fold_df, LMDB_DIR, char_to_idx, use_landmarks)
+        cfg, valid_fold_df, LMDB_DIR, converter, use_landmarks)
     train_loader = DataLoader(
         train_dataset, batch_size=cfg.train_bs, shuffle=True, num_workers=os.cpu_count())
     valid_loader = DataLoader(
@@ -361,9 +438,17 @@ def prepare_dataloader(cfg, LMDB_DIR, char_to_idx, use_landmarks, train_fold_df,
 # model
 
 
-def create_model(cfg, use_landmarks, n_classes):
-    n_features = len(use_landmarks['right_hand']) * 2
-    model = Model(cfg.hand_max_length, n_features, n_classes)
+def create_model(cfg, input_size, vocab_size, max_seq_length):
+    model = Transformer(
+        input_size=input_size,
+        vocab_size=vocab_size,
+        max_seq_length=max_seq_length,
+        embed_dim=cfg.embed_dim,
+        ffn_hidden_dim=cfg.ffn_hidden_dim,
+        num_heads=cfg.num_heads,
+        drop_prob=cfg.drop_prob,
+        num_layers=cfg.num_layers,
+    )
     return model
 
 
@@ -373,7 +458,7 @@ def train_function(
     fold,
     epoch,
     train_loader,
-    ctc_converter,
+    converter,
     model,
     optimizer,
     scheduler,
@@ -393,17 +478,16 @@ def train_function(
 
         hand = batch['hand'].to(device).float()
         # lips = batch['lips'].to(device)
-        label_tensor, len_label_tensor = ctc_converter.encode(
-            batch['label'], batch_max_length=cfg.batch_max_length)
-        label_tensor = label_tensor.to(device)
-        len_label_tensor = len_label_tensor.to(device)
+        input_label = batch['input_label'].to(device)
+        targets = batch['target'].to(device)
+        target_length = batch['target_length'].to(device)
+        enc_self_attn_msk = batch['enc_self_attn_msk'].to(device)
+        dec_self_attn_msk = batch['dec_self_attn_msk'].to(device)
+        dec_cross_attn_msk = batch['dec_cross_attn_msk'].to(device)
         with autocast():
-            preds = model(hand)  # (bs, seq_len, n_classes)
-            preds = preds.log_softmax(2).permute(
-                1, 0, 2)  # (seq_len, bs, n_classes)
-            preds_size = torch.IntTensor([preds.size(1)] * bs)
-            loss = loss_fn(preds, label_tensor, preds_size, len_label_tensor)
-
+            preds = model(hand, input_label, enc_self_attn_msk, dec_self_attn_msk,
+                          dec_cross_attn_msk)
+            loss = loss_fn(preds, targets)
         scaler.scale(loss).backward()
         scaler.step(optimizer)
         scaler.update()
@@ -413,18 +497,18 @@ def train_function(
 
         # to numpy
         preds = preds.argmax(
-            dim=-1).permute(1, 0).detach().cpu().numpy()  # (bs, seq_len)
-        label = label_tensor.detach().cpu().numpy()
-        len_label = len_label_tensor.detach().cpu().numpy()  # (bs, label_len)
+            dim=-1).detach().cpu().numpy()  # (bs, seq_len)
+        targets = targets.detach().cpu().numpy()
+        target_length = target_length.detach().cpu().numpy()  # (bs, label_len)
 
-        pred_text, label_text = \
-            ctc_converter.decode(
-                preds, len_label), ctc_converter.decode(label, len_label)
+        preds_text = [converter.decode(pred) for pred in preds]
+        targets_text = [converter.decode(target) for target in targets]
+
         if i < 5:
             print([(pred_, label_)
-                  for pred_, label_ in zip(pred_text, label_text)])
+                  for pred_, label_ in zip(preds_text, targets_text)])
 
-        accuracy, norm_ld = validation_metrics(pred_text, label_text)
+        accuracy, norm_ld = validation_metrics(preds_text, targets_text)
 
         train_loss.update(loss.item(), bs)
         train_norm_ld.update(norm_ld, bs)
@@ -440,14 +524,14 @@ def train_function(
 
 
 def valid_function(
-        cfg,
-        fold,
-        epoch,
-        valid_loader,
-        ctc_converter,
-        model,
-        loss_fn,
-        device
+    cfg,
+    fold,
+    epoch,
+    valid_loader,
+    converter,
+    model,
+    loss_fn,
+    device,
 ):
     model.eval()
     valid_loss = AverageMeter()
@@ -460,29 +544,31 @@ def valid_function(
 
         hand = batch['hand'].to(device).float()
         # lips = batch['lips'].to(device)
-        label_tensor, len_label_tensor = ctc_converter.encode(
-            batch['label'], batch_max_length=cfg.batch_max_length)
-        label_tensor = label_tensor.to(device)
-        len_label_tensor = len_label_tensor.to(device)
-
+        input_label = batch['input_label'].to(device)
+        targets = batch['target'].to(device)
+        target_length = batch['target_length'].to(device)
+        enc_self_attn_msk = batch['enc_self_attn_msk'].to(device)
+        dec_self_attn_msk = batch['dec_self_attn_msk'].to(device)
+        dec_cross_attn_msk = batch['dec_cross_attn_msk'].to(device)
         with torch.no_grad():
-            preds = model(hand)  # (bs, seq_len, n_classes)
-            preds = preds.log_softmax(2).permute(
-                1, 0, 2)  # (seq_len, bs, n_classes)
-            preds_size = torch.IntTensor([preds.size(1)] * bs)
-            loss = loss_fn(preds, label_tensor, preds_size, len_label_tensor)
+            preds = model(hand, input_label, enc_self_attn_msk, dec_self_attn_msk,
+                          dec_cross_attn_msk)
+            loss = loss_fn(preds, targets)
 
         # to numpy
-        preds = preds.argmax(dim=-1).permute(1, 0).detach().cpu().numpy()
-        label = label_tensor.detach().cpu().numpy()
-        len_label = len_label_tensor.detach().cpu().numpy()
+        preds = preds.argmax(
+            dim=-1).detach().cpu().numpy()  # (bs, seq_len)
+        targets = targets.detach().cpu().numpy()
+        target_length = target_length.detach().cpu().numpy()  # (bs, label_len)
 
-        pred_text, label_text = ctc_converter.decode(
-            preds, len_label), ctc_converter.decode(label, len_label)
+        preds_text = [converter.decode(pred) for pred in preds]
+        targets_text = [converter.decode(target) for target in targets]
+
         if i < 5:
             print([(pred_, label_)
-                  for pred_, label_ in zip(pred_text, label_text)])
-        accuracy, norm_ld = validation_metrics(pred_text, label_text)
+                  for pred_, label_ in zip(preds_text, targets_text)])
+
+        accuracy, norm_ld = validation_metrics(preds_text, targets_text)
 
         valid_loss.update(loss.item(), bs)
         valid_norm_ld.update(norm_ld, bs)
@@ -492,7 +578,6 @@ def valid_function(
         pbar.set_description(f'【VALID EPOCH {epoch}/{cfg.n_epochs}】')
         pbar.set_postfix(OrderedDict(loss=valid_loss.avg, norm_ld=valid_norm_ld.avg,
                          accuracy=valid_accuracy.avg))
-
     return valid_loss.avg, valid_norm_ld.avg, valid_accuracy.avg
 
 
@@ -551,21 +636,22 @@ def main(
         )
         wandb.config.fold = fold
 
+        # converter
+        converter = LabelConverter(
+            char_to_idx, cfg.phrase_max_length, PAD_TOKEN, SOS_TOKEN, EOS_TOKEN)
+        vocab_size = len(converter.character)
+
         # fold df
         train_fold_df = train_df[train_df['fold']
                                  != fold].reset_index(drop=True)
         valid_fold_df = train_df[train_df['fold']
                                  == fold].reset_index(drop=True)
         train_loader, valid_loader = prepare_dataloader(
-            cfg, LMDB_DIR, char_to_idx, use_landmarks, train_fold_df, valid_fold_df)
-
-        # ctc converter
-        ctc_converter = CTCLabelConverter(char_to_idx)
-        n_chars = len(ctc_converter.character)
+            cfg, LMDB_DIR, converter, use_landmarks, train_fold_df, valid_fold_df)
 
         # model
         model = create_model(
-            cfg, use_landmarks, n_classes=n_chars).to(device)
+            cfg, input_size=42, vocab_size=vocab_size, max_seq_length=max(cfg.hand_max_length, cfg.phrase_max_length)).to(device)
 
         # optimizer
         if cfg.optimizer == 'AdamW':
@@ -586,8 +672,7 @@ def main(
             scheduler_step_frequence = None
 
         # loss
-        loss_fn = nn.CTCLoss(blank=0, reduction='mean',
-                             zero_infinity=True).to(device)
+        loss_fn = nn.CrossEntropyLoss(ignore_index=0)
 
         # scaler
         scaler = GradScaler()
@@ -600,9 +685,9 @@ def main(
         }
         for epoch in range(1, cfg.n_epochs+1):
             train_loss, train_norm_ld, train_accuracy = train_function(
-                cfg, fold, epoch, train_loader, ctc_converter, model, optimizer, scheduler, scheduler_step_frequence, loss_fn, scaler, device)
+                cfg, fold, epoch, train_loader, converter, model, optimizer, scheduler, scheduler_step_frequence, loss_fn, scaler, device)
             valid_loss, valid_norm_ld, valid_accuracy = valid_function(
-                cfg, fold, epoch, valid_loader, ctc_converter, model, loss_fn, device)
+                cfg, fold, epoch, valid_loader, converter, model, loss_fn, device)
 
             print('-*-'*30)
             print(f'【FOLD {fold} EPOCH {epoch}/{cfg.n_epochs}】')

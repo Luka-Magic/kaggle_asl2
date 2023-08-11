@@ -1,0 +1,61 @@
+#####   BASIC   ######################################
+debug: false
+
+wandb_project: kaggle_asl2
+dataset_name: data0001
+seed: 77
+n_epochs: 150
+split_method: StratifiedGroupKFold
+n_folds: 5
+use_fold: [0] # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+save_model: false
+use_amp: true
+n_valid_per_epoch: 3
+
+#####   Input   ######################################
+use_types: [left_hand, right_hand, lips]
+hand_max_length: 256 # max: 574
+lips_max_length: 16 # max: 784
+phrase_max_length: 32
+
+padding: "edge" # ['edge', 'constant']
+padding_value: 0 # padding in ['constant_value']
+frame_drop_rate: 0.0
+
+aug_hand_params:
+  angle: 7.
+  scale: 0.1
+  shift_x: 0.016
+  shift_y: 0.053
+
+##### DataLoader #####################################
+train_bs: 32
+valid_bs: 32
+
+#####   Model   ######################################
+embed_dim: 256
+ffn_hidden_dim: 1024
+num_heads: 4
+drop_prob: 0.1
+num_layers: 2
+
+restart:
+pretrained_model_from_net_path:
+pretrained_model_exp_name:
+
+##### Optimizer ######################################
+lr: 1e-3
+optimizer: AdamW
+weight_decay: 1e-6
+
+##### Scheduler ######################################
+scheduler: CosineAnnealingWarmRestarts # OneCycleLR, CosineAnnealingWarmRestarts
+scheduler_step_frequence: epoch # step, epoch
+# T_0: 10 # CAWR
+T_0: ${n_epochs} # CAWR
+T_mult: 1 # CAWR
+eta_min: 1e-7 # CAWR
+
+pct_start: 0.05 # OCLR
+div_factor: 100. # OCLR
+final_div_factor: 1000. # OCLR
