@@ -36,7 +36,6 @@ valid_bs: 32
 embed_dim: 256
 ffn_hidden: 1024
 num_heads: 4
-num_heads: 4
 drop_prob: 0.1
 num_layers: 2
 
