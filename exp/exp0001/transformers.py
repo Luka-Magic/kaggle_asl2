@@ -4,41 +4,41 @@ from torch import nn
 import torch.nn.functional as F
 
 
-def pack_seq(
-    seq,
-):
-    '''
+# def pack_seq(
+#     seq,
+# ):
+#     '''
 
-    長さの異なる系列をbatchで一つにする。その際maskも返す。
+#     長さの異なる系列をbatchで一つにする。その際maskも返す。
 
-    Parameters:
-    ----------
-    seq: List(torch.tensor)
-        shape = (seq_len, n_landmark, 2)
-        len(seq) = batch_size
+#     Parameters:
+#     ----------
+#     seq: List(torch.tensor)
+#         shape = (seq_len, n_landmark, 2)
+#         len(seq) = batch_size
 
-    Returns
-    -------
-    x: torch.tensor
-        shape = (batch_size, max_seq_len, n_landmark*2)
-    x_mask: torch.tensor
-        shape = (batch_size, max_seq_len)
+#     Returns
+#     -------
+#     x: torch.tensor
+#         shape = (batch_size, max_seq_len, n_landmark*2)
+#     x_mask: torch.tensor
+#         shape = (batch_size, max_seq_len)
 
-    '''
-    length = [len(s) for s in seq]
-    batch_size = len(seq)
-    num_landmark = seq[0].shape[1]
+#     '''
+#     length = [len(s) for s in seq]
+#     batch_size = len(seq)
+#     num_landmark = seq[0].shape[1]
 
-    x = torch.zeros((batch_size, max(length), num_landmark, 2)
-                    ).to(seq[0].device)
-    x_mask = torch.zeros((batch_size, max(length))).to(seq[0].device)
-    for b in range(batch_size):
-        L = length[b]
-        x[b, :L] = seq[b][:L]
-        x_mask[b, L:] = 1
-    x_mask = (x_mask > 0.5)
-    x = x.reshape(batch_size, -1, num_landmark*2)
-    return x, x_mask
+#     x = torch.zeros((batch_size, max(length), num_landmark, 2)
+#                     ).to(seq[0].device)
+#     x_mask = torch.zeros((batch_size, max(length))).to(seq[0].device)
+#     for b in range(batch_size):
+#         L = length[b]
+#         x[b, :L] = seq[b][:L]
+#         x_mask[b, L:] = 1
+#     x_mask = (x_mask > 0.5)
+#     x = x.reshape(batch_size, -1, num_landmark*2)
+#     return x, x_mask
 
 
 class LandmarkEnbedding(nn.Module):

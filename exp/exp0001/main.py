@@ -444,7 +444,7 @@ def create_model(cfg, input_size, vocab_size, max_seq_length):
         vocab_size=vocab_size,
         max_seq_length=max_seq_length,
         embed_dim=cfg.embed_dim,
-        ffn_hidden_dim=cfg.ffn_hidden_dim,
+        ffn_hidden=cfg.ffn_hidden,
         num_heads=cfg.num_heads,
         drop_prob=cfg.drop_prob,
         num_layers=cfg.num_layers,
