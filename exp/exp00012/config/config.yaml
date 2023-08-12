@@ -33,11 +33,11 @@ train_bs: 32
 valid_bs: 32
 
 #####   Model   ######################################
-embed_dim: 384
-ffn_hidden: 768
-num_heads: 6
-drop_prob: 0.4
-num_layers: 6
+embed_dim: 256
+ffn_hidden: 1024
+num_heads: 4
+drop_prob: 0.1
+num_layers: 2
 
 restart:
 pretrained_model_from_net_path:
