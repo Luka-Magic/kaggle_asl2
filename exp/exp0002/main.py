@@ -159,6 +159,9 @@ def get_indices(cfg):
         body=[11, 23, 24, 12],
         left_arm=[501, 503, 505],
         right_arm=[500, 502, 504],
+
+        left_pose=[502, 504, 506, 508, 510],
+        right_pose=[503, 505, 507, 509, 511],
     )
 
     use_types = cfg.use_types

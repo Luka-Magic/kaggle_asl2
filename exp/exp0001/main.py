@@ -233,7 +233,6 @@ class Asl2Dataset(Dataset):
     def array_process(self, array, landmark, max_length):
         '''
         - slice landmark array
-        - delete nan frame
         - if right_hand => apply_aug_hand
         - pad or truncate
         - to tensor
@@ -254,10 +253,6 @@ class Asl2Dataset(Dataset):
         # slice
         array = array[:, self.array_dict[landmark], :].copy()
         n_landmarks = len(self.array_dict[landmark])
-
-        # dropna
-        not_nan_frame = ~np.isnan(np.mean(array, axis=(1, 2)))
-        array = array[not_nan_frame, :, :]
 
         # apply aug
         if landmark == 'right_hand':
@@ -316,6 +311,11 @@ class Asl2Dataset(Dataset):
             array[:, self.array_dict['left_hand'], :])
         mirrered_array[:, self.array_dict['left_hand'], :] = invert_x(
             array[:, self.array_dict['right_hand'], :])
+        # pose
+        mirrered_array[:, self.array_dict['right_pose'], :] = invert_x(
+            array[:, self.array_dict['left_pose'], :])
+        mirrered_array[:, self.array_dict['left_pose'], :] = invert_x(
+            array[:, self.array_dict['right_pose'], :])
         # lips
         for key in ['lips']:
             mirrered_array[:, self.array_dict[key], :] = invert_x(
@@ -384,16 +384,32 @@ class Asl2Dataset(Dataset):
 
         # check dominant hand
         dominant_hand = self.check_dominant_hand(array)
+
         if dominant_hand == 'left':
             array = self.mirrored(array)
+
+        # drop nan
+        hand_not_nan_frame = ~np.isnan(
+            np.mean(array[:, self.array_dict['right_hand'], :], axis=(1, 2)))
+        array = array[hand_not_nan_frame, :, :]
 
         # hand array
         hand_tensor, hand_length = self.array_process(
             array, 'right_hand', self.hand_max_length)
 
-        # # lips array
-        # lips_tensor = self.array_process(
-        #     array, 'lips', self.lips_max_length)
+        # lips array
+        lips_tensor = self.array_process(
+            array, 'lips', self.lips_max_length)
+
+        # pose array
+        right_pose_tensor = self.array_process(
+            array, 'right_pose', self.pose_max_length)
+        left_pose_tensor = self.array_process(
+            array, 'left_pose', self.pose_max_length)
+
+        # concat
+        input_tensor = torch.cat(
+            (hand_tensor, lips_tensor, right_pose_tensor, left_pose_tensor), dim=1)
 
         # label to token and to tensor
         input_label_tensor, label_length = self.converter.encode(
@@ -404,8 +420,10 @@ class Asl2Dataset(Dataset):
         encoder_self_attention_mask, decoder_self_attention_mask, decoder_cross_attention_mask = self.create_mask(
             hand_length, label_length)
 
+        print(input_tensor.shape)
+        exit()
         item = {
-            'hand': hand_tensor,
+            'input': input_tensor,
             'input_label': input_label_tensor,
             'target': target_tensor,
             'target_length': len(label),

@@ -46,18 +46,18 @@ class LandmarkEnbedding(nn.Module):
     LandmarkEnbedding
     '''
 
-    def __init__(self, in_dim, out_dim):
+    def __init__(self, input_size, embed_dim):
         # input_dim = n_landmarks
         super().__init__()
         self.mlp = nn.Sequential(
-            nn.Linear(in_dim, out_dim, bias=False),
+            nn.Linear(input_size, embed_dim, bias=False),
             nn.GELU(),
-            nn.Linear(out_dim, out_dim)
+            nn.Linear(embed_dim, embed_dim)
         )
 
     def forward(self, x):
-        # x.shape = (batch_size, n_seq, in_dim)
-        x = self.mlp(x)  # (batch_size, n_seq, out_dim)
+        # x.shape = (batch_size, n_seq, input_size)
+        x = self.mlp(x)  # (batch_size, n_seq, embed_dim)
         return x
 
 

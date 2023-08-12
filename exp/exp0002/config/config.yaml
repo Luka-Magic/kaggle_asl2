@@ -13,7 +13,7 @@ use_amp: true
 n_valid_per_epoch: 3
 
 #####   Input   ######################################
-use_types: [left_hand, right_hand, lips]
+use_types: [left_hand, right_hand, lips, left_pose, right_pose]
 hand_max_length: 512 # max: 574
 lips_max_length: 16 # max: 784
 phrase_max_length: 40
@@ -33,10 +33,10 @@ train_bs: 32
 valid_bs: 32
 
 #####   Model   ######################################
-embed_dim: 256
-ffn_hidden: 1024
-num_heads: 4
-drop_prob: 0.1
+embed_dim: 384
+ffn_hidden: 768
+num_heads: 6
+drop_prob: 0.4
 num_layers: 2
 
 restart:
