@@ -396,13 +396,13 @@ class Asl2Dataset(Dataset):
             array, 'right_hand', self.hand_max_length)
 
         # lips array
-        lips_tensor = self.array_process(
+        lips_tensor, _ = self.array_process(
             array, 'lips', self.lips_max_length)
 
         # pose array
-        right_pose_tensor = self.array_process(
+        right_pose_tensor, _ = self.array_process(
             array, 'right_pose', self.pose_max_length)
-        left_pose_tensor = self.array_process(
+        left_pose_tensor, _ = self.array_process(
             array, 'left_pose', self.pose_max_length)
 
         # concat
