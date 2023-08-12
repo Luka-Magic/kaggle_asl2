@@ -111,5 +111,5 @@ class LabelConverter(object):
         if 2 in text_index:
             text_index = text_index[:text_index.index(2)]
         texts = ''.join([self.character[i]
-                        for i in text_index]).replace(self.pad_token, '')
+                        for i in text_index]).replace(self.pad_token, '').replace(self.sos_token, '').replace(self.eos_token, '')
         return texts
