@@ -51,7 +51,7 @@ weight_decay: 1e-6
 
 ##### Scheduler ######################################
 scheduler: OneCycleLR # OneCycleLR, CosineAnnealingWarmRestarts
-scheduler_step_frequence: epoch # step, epoch
+scheduler_step_frequence: step # step, epoch
 # T_0: 10 # CAWR
 T_0: ${n_epochs} # CAWR
 T_mult: 1 # CAWR
