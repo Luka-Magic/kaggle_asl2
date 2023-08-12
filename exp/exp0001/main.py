@@ -396,10 +396,11 @@ class Asl2Dataset(Dataset):
         #     array, 'lips', self.lips_max_length)
 
         # label to token and to tensor
-        input_label_tensor, label_length = self.converter.encode(
+        input_label_tensor, label_length, input_label_text = self.converter.encode(
             label, add_sos=True)
-        target_tensor, _ = self.converter.encode(label, add_sos=False)
-
+        target_tensor, _, target_text = self.converter.encode(
+            label, add_sos=False)
+        print(input_label_text, target_text)
         # create mask
         encoder_self_attention_mask, decoder_self_attention_mask, decoder_cross_attention_mask = self.create_mask(
             hand_length, label_length)
@@ -476,6 +477,8 @@ def train_function(
     pbar = tqdm(enumerate(train_loader), total=len(train_loader))
     for i, batch in pbar:
         bs = len(batch['target'])
+        if i == 0:
+            exit()
 
         hand = batch['hand'].to(device).float()
         # lips = batch['lips'].to(device)
