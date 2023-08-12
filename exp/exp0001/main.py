@@ -588,7 +588,7 @@ def valid_function(
         pbar.set_description(f'【VALID EPOCH {epoch}/{cfg.n_epochs}】')
         pbar.set_postfix(OrderedDict(loss=valid_loss.avg, norm_ld=valid_norm_ld.avg,
                          accuracy=valid_accuracy.avg))
-
+    return valid_loss.avg, valid_norm_ld.avg, valid_accuracy.avg
 # main
 
 
