@@ -100,7 +100,7 @@ class LabelConverter(object):
 
         # convert to index
         tokens = torch.LongTensor([self.dict[char] for char in text])
-        return tokens, tensor_length, text
+        return tokens, tensor_length
 
     def decode(self, text_index: torch.LongTensor) -> str:
         # convert tensor to list
