@@ -486,10 +486,13 @@ def train_function(
         dec_self_attn_msk = batch['dec_self_attn_msk'].to(device)
         dec_cross_attn_msk = batch['dec_cross_attn_msk'].to(device)
         with autocast():
+            # hand: shape=(bs, seq_len, input_size)
+            # input_label: shape=(bs, label_len)
+            # mask: shape=(bs, seq_len, seq_len)
             preds = model(hand, input_label, enc_self_attn_msk, dec_self_attn_msk,
                           dec_cross_attn_msk)
-            print(preds.shape, targets.shape)
-            loss = loss_fn(preds, targets)
+            # preds: shape=(bs, seq_len, vocab_size)
+            loss = loss_fn(preds.transpose(-1, -2), targets)
         scaler.scale(loss).backward()
         scaler.step(optimizer)
         scaler.update()
