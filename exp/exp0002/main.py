@@ -406,6 +406,8 @@ class Asl2Dataset(Dataset):
             array, 'left_pose', self.pose_max_length)
 
         # concat
+        print(hand_tensor.shape, lips_tensor.shape,
+              right_pose_tensor.shape, left_pose_tensor.shape)
         input_tensor = torch.cat(
             (hand_tensor, lips_tensor, right_pose_tensor, left_pose_tensor), dim=1)
 
