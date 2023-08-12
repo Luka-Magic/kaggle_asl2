@@ -528,6 +528,7 @@ def train_function(
     return train_loss.avg, train_norm_ld.avg, train_accuracy.avg
 
 
+# valid
 def valid_function(
     cfg,
     fold,
@@ -545,7 +546,7 @@ def valid_function(
 
     pbar = tqdm(enumerate(valid_loader), total=len(valid_loader))
     for i, batch in pbar:
-        bs = len(batch['label'])
+        bs = len(batch['target'])
 
         hand = batch['hand'].to(device).float()
         # lips = batch['lips'].to(device)
@@ -556,9 +557,13 @@ def valid_function(
         dec_self_attn_msk = batch['dec_self_attn_msk'].to(device)
         dec_cross_attn_msk = batch['dec_cross_attn_msk'].to(device)
         with torch.no_grad():
+            # hand: shape=(bs, seq_len, input_size)
+            # input_label: shape=(bs, label_len)
+            # mask: shape=(bs, seq_len, seq_len)
             preds = model(hand, input_label, enc_self_attn_msk, dec_self_attn_msk,
                           dec_cross_attn_msk)
-            loss = loss_fn(preds, targets)
+            # preds: shape=(bs, seq_len, vocab_size)
+            loss = loss_fn(preds.transpose(-1, -2), targets)
 
         # to numpy
         preds = preds.argmax(
@@ -583,10 +588,10 @@ def valid_function(
         pbar.set_description(f'【VALID EPOCH {epoch}/{cfg.n_epochs}】')
         pbar.set_postfix(OrderedDict(loss=valid_loss.avg, norm_ld=valid_norm_ld.avg,
                          accuracy=valid_accuracy.avg))
-    return valid_loss.avg, valid_norm_ld.avg, valid_accuracy.avg
-
 
 # main
+
+
 def main(
     is_first_learning,
     use_wandb
