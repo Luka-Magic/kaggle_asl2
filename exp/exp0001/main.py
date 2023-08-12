@@ -622,6 +622,9 @@ def main(
     # use landmark index
     use_landmarks = get_indices(cfg)
 
+    # max length
+    max_length = max(cfg.hand_max_length, cfg.phrase_max_length)
+
     for fold in range(cfg.n_folds):
         if fold not in cfg.use_fold:
             continue
@@ -640,7 +643,7 @@ def main(
 
         # converter
         converter = LabelConverter(
-            char_to_idx, cfg.phrase_max_length, PAD_TOKEN, SOS_TOKEN, EOS_TOKEN)
+            char_to_idx, max_length, PAD_TOKEN, SOS_TOKEN, EOS_TOKEN)
         vocab_size = len(converter.character)
 
         # fold df
@@ -653,7 +656,7 @@ def main(
 
         # model
         model = create_model(
-            cfg, input_size=42, vocab_size=vocab_size, max_seq_length=max(cfg.hand_max_length, cfg.phrase_max_length)).to(device)
+            cfg, input_size=42, vocab_size=vocab_size, max_seq_length=max_length).to(device)
 
         # optimizer
         if cfg.optimizer == 'AdamW':

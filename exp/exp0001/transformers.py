@@ -299,7 +299,7 @@ class Encoder(nn.Module):
     def __init__(self, input_size, max_seq_length, embed_dim, ffn_hidden, num_heads, drop_prob, num_layers):
         super().__init__()
         self.encoder_embedding = EncoderEmbedding(
-            input_size, embed_dim, max_seq_length)
+            embed_dim, input_size, max_seq_length)
         self.layers = SequentialEncoder(*[EncoderLayer(embed_dim, ffn_hidden, num_heads, drop_prob)
                                           for _ in range(num_layers)])
 
