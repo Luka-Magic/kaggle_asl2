@@ -396,8 +396,9 @@ class Asl2Dataset(Dataset):
         #     array, 'lips', self.lips_max_length)
 
         # label to token and to tensor
-        input_label_tensor, label_length = self.converter(label, add_sos=True)
-        target_tensor, _ = self.converter(label, add_sos=False)
+        input_label_tensor, label_length = self.converter.encode(
+            label, add_sos=True)
+        target_tensor, _ = self.converter.encode(label, add_sos=False)
 
         # create mask
         encoder_self_attention_mask, decoder_self_attention_mask, decoder_cross_attention_mask = self.create_mask(
