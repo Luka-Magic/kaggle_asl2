@@ -486,6 +486,7 @@ def train_function(
         dec_self_attn_msk = batch['dec_self_attn_msk'].to(device)
         dec_cross_attn_msk = batch['dec_cross_attn_msk'].to(device)
         with autocast():
+            print(hand.shape, input_label.shape)
             preds = model(hand, input_label, enc_self_attn_msk, dec_self_attn_msk,
                           dec_cross_attn_msk)
             loss = loss_fn(preds, targets)
