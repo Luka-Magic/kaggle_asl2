@@ -352,8 +352,7 @@ class Asl2Dataset(Dataset):
 
         decoder_padding_mask_cross_attention[:,
                                              eng_chars_to_padding_mask] = True
-        # frame??
-        decoder_padding_mask_cross_attention[eng_chars_to_padding_mask, :] = True
+        decoder_padding_mask_cross_attention[frame_chars_to_padding_mask, :] = True
 
         encoder_self_attention_mask = torch.where(
             encoder_padding_mask, NEG_INFTY, 0)

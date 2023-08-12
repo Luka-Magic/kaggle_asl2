@@ -16,9 +16,9 @@ n_valid_per_epoch: 3
 use_types: [left_hand, right_hand, lips]
 hand_max_length: 512 # max: 574
 lips_max_length: 16 # max: 784
-phrase_max_length: 32
+phrase_max_length: 40
 
-padding: "edge" # ['edge', 'constant']
+padding: "constant_value" # ['edge', 'constant_value']
 padding_value: 0 # padding in ['constant_value']
 frame_drop_rate: 0.0
 
@@ -44,7 +44,7 @@ pretrained_model_from_net_path:
 pretrained_model_exp_name:
 
 ##### Optimizer ######################################
-lr: 1e-3
+lr: 1e-4
 optimizer: AdamW
 weight_decay: 1e-6
 
