@@ -490,7 +490,7 @@ def train_function(
     for i, batch in pbar:
         bs = len(batch['target'])
 
-        hand = batch['hand'].to(device).float()
+        hand = batch['input'].to(device).float()
         # lips = batch['lips'].to(device)
         input_label = batch['input_label'].to(device)
         targets = batch['target'].to(device)
@@ -561,7 +561,7 @@ def valid_function(
     for i, batch in pbar:
         bs = len(batch['target'])
 
-        hand = batch['hand'].to(device).float()
+        hand = batch['input'].to(device).float()
         # lips = batch['lips'].to(device)
         input_label = batch['input_label'].to(device)
         targets = batch['target'].to(device)
