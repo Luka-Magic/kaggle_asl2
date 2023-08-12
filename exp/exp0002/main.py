@@ -406,8 +406,6 @@ class Asl2Dataset(Dataset):
             array, 'left_pose', self.pose_max_length)
 
         # concat
-        print(hand_tensor.shape, lips_tensor.shape,
-              right_pose_tensor.shape, left_pose_tensor.shape)
         input_tensor = torch.cat(
             (hand_tensor, lips_tensor, right_pose_tensor, left_pose_tensor), dim=1)
 
@@ -419,9 +417,6 @@ class Asl2Dataset(Dataset):
         # create mask
         encoder_self_attention_mask, decoder_self_attention_mask, decoder_cross_attention_mask = self.create_mask(
             hand_length, label_length)
-
-        print(input_tensor.shape)
-        exit()
         item = {
             'input': input_tensor,
             'input_label': input_label_tensor,
@@ -682,7 +677,7 @@ def main(
 
         # model
         model = create_model(
-            cfg, input_size=42, vocab_size=vocab_size, max_seq_length=max_length).to(device)
+            cfg, input_size=142, vocab_size=vocab_size, max_seq_length=max_length).to(device)
 
         # optimizer
         if cfg.optimizer == 'AdamW':
