@@ -14,7 +14,7 @@ n_valid_per_epoch: 3
 
 #####   Input   ######################################
 use_types: [left_hand, right_hand, lips]
-hand_max_length: 256 # max: 574
+hand_max_length: 512 # max: 574
 lips_max_length: 16 # max: 784
 phrase_max_length: 32
 
