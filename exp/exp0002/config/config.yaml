@@ -4,7 +4,7 @@ debug: false
 wandb_project: kaggle_asl2
 dataset_name: data0001
 seed: 77
-n_epochs: 150
+n_epochs: 50
 split_method: StratifiedGroupKFold
 n_folds: 5
 use_fold: [0] # [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -15,7 +15,8 @@ n_valid_per_epoch: 3
 #####   Input   ######################################
 use_types: [left_hand, right_hand, lips, left_pose, right_pose]
 hand_max_length: 512 # max: 574
-lips_max_length: 16 # max: 784
+lips_max_length: 512 # max: 784
+pose_max_length: 512 # max: 574
 phrase_max_length: 40
 
 padding: "constant_value" # ['edge', 'constant_value']
