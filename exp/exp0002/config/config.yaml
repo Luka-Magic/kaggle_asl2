@@ -50,13 +50,13 @@ optimizer: AdamW
 weight_decay: 1e-6
 
 ##### Scheduler ######################################
-scheduler: CosineAnnealingWarmRestarts # OneCycleLR, CosineAnnealingWarmRestarts
+scheduler: OneCycleLR # OneCycleLR, CosineAnnealingWarmRestarts
 scheduler_step_frequence: epoch # step, epoch
 # T_0: 10 # CAWR
 T_0: ${n_epochs} # CAWR
 T_mult: 1 # CAWR
 eta_min: 1e-7 # CAWR
 
-pct_start: 0.05 # OCLR
+pct_start: 0.01 # OCLR
 div_factor: 100. # OCLR
 final_div_factor: 1000. # OCLR
