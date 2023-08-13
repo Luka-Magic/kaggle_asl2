@@ -186,12 +186,8 @@ class Asl2Dataset(Dataset):
         self.array_dict = use_landmarks
         self.converter = converter
 
-        self.hand_max_length = cfg.hand_max_length
-        self.lips_max_length = cfg.lips_max_length
-        self.pose_max_length = cfg.pose_max_length
-
+        self.max_length = cfg.max_length
         self.phrase_max_length = cfg.phrase_max_length
-        self.max_length = max(self.hand_max_length, self.phrase_max_length)
 
         self.padding = cfg.padding
         self.padding_value = cfg.padding_value if self.padding == 'constant_value' else None
@@ -235,7 +231,7 @@ class Asl2Dataset(Dataset):
         aug_hand = aug_hand.astype(np.float32)
         return aug_hand
 
-    def array_process(self, array, landmark, max_length):
+    def array_process(self, array, landmark):
         '''
         - slice landmark array
         - if right_hand => apply_aug_hand
@@ -273,13 +269,16 @@ class Asl2Dataset(Dataset):
         # if len(array) == 0:
         #     array = np.zeros((max_length, n_landmarks, 2))
 
+        # nan to zero
+        array[np.isnan(array)] = 0
+
         # landmark length
-        landmark_length = min(len(array), max_length)
+        landmark_length = min(len(array), self.max_length)
 
         # pad or truncate
-        if len(array) < max_length:
+        if len(array) < self.max_length:
             # pad
-            pad_length = max_length - len(array)
+            pad_length = self.max_length - len(array)
             if self.padding == 'edge':
                 array = np.pad(
                     array, ((0, pad_length), (0, 0), (0, 0)), 'edge')
@@ -291,13 +290,13 @@ class Asl2Dataset(Dataset):
             array = np.pad(array, ((0, 0), (0, 0), (0, 1)),
                            'constant').astype(np.float32)
             # cv2 resize (seq_len, n_landmarks, 3) -> (max_length, n_landmarks, 3)
-            array = cv2.resize(array, (max_length, n_landmarks),
+            array = cv2.resize(array, (self.max_length, n_landmarks),
                                interpolation=cv2.INTER_AREA)
             # remove z axis
             array = array[:, :, :2]
 
         # dim (1, 2) -> 1
-        array = array.reshape(max_length, n_landmarks * 2)
+        array = array.reshape(self.max_length, n_landmarks * 2)
 
         # to tensor
         tensor = torch.from_numpy(array)  # (seq_len, input_size)
@@ -400,17 +399,17 @@ class Asl2Dataset(Dataset):
 
         # hand array
         hand_tensor, hand_length = self.array_process(
-            array, 'right_hand', self.hand_max_length)
+            array, 'right_hand')
 
         # lips array
         lips_tensor, _ = self.array_process(
-            array, 'lips', self.lips_max_length)
+            array, 'lips')
 
         # pose array
         right_pose_tensor, _ = self.array_process(
-            array, 'right_pose', self.pose_max_length)
+            array, 'right_pose')
         left_pose_tensor, _ = self.array_process(
-            array, 'left_pose', self.pose_max_length)
+            array, 'left_pose')
 
         # concat
         input_tensor = torch.cat(
