@@ -650,7 +650,7 @@ def main(
     use_landmarks = get_indices(cfg)
 
     # max length
-    max_length = max(cfg.hand_max_length, cfg.phrase_max_length)
+    max_length = max(cfg.max_length, cfg.phrase_max_length)
 
     for fold in range(cfg.n_folds):
         if fold not in cfg.use_fold:
