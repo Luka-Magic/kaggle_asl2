@@ -413,9 +413,9 @@ class Asl2Dataset(Dataset):
             array, 'left_pose', self.pose_max_length)
 
         # concat
-        # input_tensor = torch.cat(
-        #     (hand_tensor, lips_tensor, right_pose_tensor, left_pose_tensor), dim=1)
-        input_tensor = hand_tensor
+        input_tensor = torch.cat(
+            (hand_tensor, lips_tensor, right_pose_tensor, left_pose_tensor), dim=1)
+        # input_tensor = hand_tensor
         # label to token and to tensor
         input_label_tensor, label_length = self.converter.encode(
             label, add_sos=True)
