@@ -684,7 +684,7 @@ def main(
 
         # model
         model = create_model(
-            cfg, input_size=42, vocab_size=vocab_size, max_seq_length=max_length).to(device)
+            cfg, input_size=142, vocab_size=vocab_size, max_seq_length=max_length).to(device)
 
         # optimizer
         if cfg.optimizer == 'AdamW':
