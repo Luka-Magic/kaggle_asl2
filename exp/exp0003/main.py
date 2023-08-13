@@ -514,7 +514,7 @@ class CallbackEval(tf.keras.callbacks.Callback):
 # Callback function to check transcription on the val set.
 validation_callback = CallbackEval(val_dataset.take(1))
 
-N_EPOCHS = 50
+N_EPOCHS = 1
 N_WARMUP_EPOCHS = 10
 LR_MAX = 1e-3
 WD_RATIO = 0.05
@@ -644,6 +644,9 @@ keras_model_converter = tf.lite.TFLiteConverter.from_keras_model(
     tflitemodel_base)
 keras_model_converter.target_spec.supported_ops = [
     tf.lite.OpsSet.TFLITE_BUILTINS]  # , tf.lite.OpsSet.SELECT_TF_OPS]
+keras_model_converter.optimizations = [tf.lite.Optimize.DEFAULT]
+keras_model_converter.target_spec.supported_types = [tf.float16]
+
 tflite_model = keras_model_converter.convert()
 with open('model.tflite', 'wb') as f:
     f.write(tflite_model)
