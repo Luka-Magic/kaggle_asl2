@@ -12,6 +12,9 @@ import tensorflow_addons as tfa
 from Levenshtein import distance
 import zipfile
 
+import warnings
+warnings.filterwarnings('ignore')
+
 
 class cfg:
     pass
@@ -698,7 +701,7 @@ interpreter = tf.lite.Interpreter("model.tflite")
 REQUIRED_SIGNATURE = "serving_default"
 REQUIRED_OUTPUT = "outputs"
 
-with open(RAW_DATA_DIR / "haracter_to_prediction_index.json", "r") as f:
+with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
     character_map = json.load(f)
 rev_character_map = {j: i for i, j in character_map.items()}
 
