@@ -514,7 +514,7 @@ class CallbackEval(tf.keras.callbacks.Callback):
 # Callback function to check transcription on the val set.
 validation_callback = CallbackEval(val_dataset.take(1))
 
-N_EPOCHS = 50
+N_EPOCHS = 1
 N_WARMUP_EPOCHS = 10
 LR_MAX = 1e-3
 WD_RATIO = 0.05
