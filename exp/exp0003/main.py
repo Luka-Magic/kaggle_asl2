@@ -511,8 +511,8 @@ class CallbackEval(tf.keras.callbacks.Callback):
 # Callback function to check transcription on the val set.
 validation_callback = CallbackEval(val_dataset.take(1))
 
-N_EPOCHS = 50
-N_WARMUP_EPOCHS = 10
+N_EPOCHS = 1
+N_WARMUP_EPOCHS = 0
 LR_MAX = 1e-3
 WD_RATIO = 0.05
 WARMUP_METHOD = "exp"
@@ -577,7 +577,7 @@ def plot_lr_schedule(lr_schedule, epochs):
 LR_SCHEDULE = [lrfn(step, num_warmup_steps=N_WARMUP_EPOCHS,
                     lr_max=LR_MAX, num_cycles=0.50) for step in range(N_EPOCHS)]
 # Plot Learning Rate Schedule
-plot_lr_schedule(LR_SCHEDULE, epochs=N_EPOCHS)
+# plot_lr_schedule(LR_SCHEDULE, epochs=N_EPOCHS)
 # Learning Rate Callback
 lr_callback = tf.keras.callbacks.LearningRateScheduler(
     lambda step: LR_SCHEDULE[step], verbose=0)
