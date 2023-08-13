@@ -2,6 +2,7 @@
 import sys
 import gc
 import math
+import cv2
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -56,9 +57,9 @@ def init_lmdb(lmdb_dir):
         for lmdb_id in tqdm(range(n_samples)):
             lmdb_id = int(lmdb_id)
             label_key = f'label-{str(lmdb_id+1).zfill(8)}'.encode()
-            _ = txn.get(label_key).decode('utf-8')
+            txn.get(label_key).decode('utf-8')
             array_key = f'array-{str(lmdb_id+1).zfill(8)}'.encode()
-            _ = np.frombuffer(txn.get(array_key), dtype=np.float16)
+            np.frombuffer(txn.get(array_key), dtype=np.float16)
 
 
 def split_data(cfg, train_csv_path):
@@ -287,7 +288,13 @@ class Asl2Dataset(Dataset):
                                'constant', constant_values=self.padding_value)
         else:
             # truncate
-            array = array[:max_length]
+            # add z axis
+            array = np.pad(array, ((0, 0), (0, 0), (0, 1)), 'constant')
+            # cv2 resize (seq_len, n_landmarks, 3) -> (max_length, n_landmarks, 3)
+            array = cv2.resize(array, (max_length, n_landmarks),
+                               interpolation=cv2.INTER_AREA)
+            # remove z axis
+            array = array[:, :, :2]
 
         # dim (1, 2) -> 1
         array = array.reshape(max_length, n_landmarks * 2)
