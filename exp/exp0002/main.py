@@ -287,9 +287,9 @@ class Asl2Dataset(Dataset):
                 array = np.pad(array, ((0, pad_length), (0, 0), (0, 0)),
                                'constant', constant_values=self.padding_value)
         else:
-            # truncate
             # add z axis
-            array = np.pad(array, ((0, 0), (0, 0), (0, 1)), 'constant')
+            array = np.pad(array, ((0, 0), (0, 0), (0, 1)),
+                           'constant').astype(np.float32)
             # cv2 resize (seq_len, n_landmarks, 3) -> (max_length, n_landmarks, 3)
             array = cv2.resize(array, (max_length, n_landmarks),
                                interpolation=cv2.INTER_AREA)

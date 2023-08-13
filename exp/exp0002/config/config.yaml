@@ -21,7 +21,7 @@ phrase_max_length: 40
 
 padding: "constant_value" # ['edge', 'constant_value']
 padding_value: 0 # padding in ['constant_value']
-frame_drop_rate: 0.0
+frame_drop_rate: 0.1
 
 aug_hand_params:
   angle: 7.
