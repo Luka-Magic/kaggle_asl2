@@ -25,7 +25,7 @@ DATA_DIR = ROOT_DIR / 'data' / 'kaggle_dataset' / 'irohith_tfrecords'
 SAVE_DIR = ROOT_DIR / 'outputs' / exp_name
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
-with open(RAW_DATA_DIR / "/character_to_prediction_index.json", "r") as f:
+with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
     char_to_num = json.load(f)
 
 pad_token = '^'
