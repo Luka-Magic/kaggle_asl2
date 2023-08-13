@@ -19,7 +19,7 @@ phrase_max_length: 40
 
 padding: "constant_value" # ['edge', 'constant_value']
 padding_value: 0 # padding in ['constant_value']
-frame_drop_rate: 0.1
+frame_drop_rate: 0.
 
 aug_hand_params:
   angle: 7.
@@ -33,7 +33,7 @@ valid_bs: 32
 
 #####   Model   ######################################
 embed_dim: 512
-ffn_hidden: 1024
+ffn_hidden: 2048
 num_heads: 8
 drop_prob: 0.4
 num_layers: 4
