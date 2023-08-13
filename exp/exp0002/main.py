@@ -413,7 +413,7 @@ class Asl2Dataset(Dataset):
 
         # concat
         input_tensor = torch.cat(
-            (hand_tensor, lips_tensor), dim=1)
+            (hand_tensor, lips_tensor, right_pose_tensor, left_pose_tensor), dim=1)
         # input_tensor = hand_tensor
         # label to token and to tensor
         input_label_tensor, label_length = self.converter.encode(
@@ -683,7 +683,7 @@ def main(
 
         # model
         model = create_model(
-            cfg, input_size=122, vocab_size=vocab_size, max_seq_length=max_length).to(device)
+            cfg, input_size=142, vocab_size=vocab_size, max_seq_length=max_length).to(device)
 
         # optimizer
         if cfg.optimizer == 'AdamW':
