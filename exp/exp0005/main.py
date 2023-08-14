@@ -245,7 +245,6 @@ pre0 = pre_process0(frames)
 pre1 = pre_process1(*pre0)
 INPUT_SHAPE = list(pre1.shape)
 print(INPUT_SHAPE)
-print(pre1)
 
 
 def decode_fn(record_bytes):
@@ -616,8 +615,8 @@ if DEBUG:
     N_EPOCHS = 1
     N_WARMUP_EPOCHS = 0
 else:
-    N_EPOCHS = 30
-    N_WARMUP_EPOCHS = 5
+    N_EPOCHS = 50
+    N_WARMUP_EPOCHS = 10
 LR_MAX = 1e-3
 WD_RATIO = 0.05
 WARMUP_METHOD = "exp"
