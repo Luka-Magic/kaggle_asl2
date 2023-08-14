@@ -256,7 +256,6 @@ kf = KFold(n_splits=N_FOLDS, shuffle=True, random_state=SEED).split(tffiles)
 for fold, (train_indices, valid_indices) in enumerate(kf):
     if fold == FOLD:
         break
-valid_pd_ids = [Path(tffiles[i]).stem for i in valid_indices.tolist()]
 
 train_batch_size = 32
 val_batch_size = 32
@@ -266,11 +265,13 @@ if DEBUG:
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(train_batch_size).prefetch(tf.data.AUTOTUNE)
     val_dataset = tf.data.TFRecordDataset(tffiles[1:2]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(val_batch_size).prefetch(tf.data.AUTOTUNE)
+    valid_pd_ids = [tffiles[1:2]]
 else:
     train_dataset = tf.data.TFRecordDataset([tffiles[i] for i in train_indices.tolist()]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(train_batch_size).prefetch(tf.data.AUTOTUNE)
     val_dataset = tf.data.TFRecordDataset([tffiles[i] for i in valid_indices.tolist()]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(val_batch_size).prefetch(tf.data.AUTOTUNE)
+    valid_pd_ids = [Path(tffiles[i]).stem for i in valid_indices.tolist()]
 
 batch = next(iter(val_dataset))
 print(batch[0].shape, batch[1].shape)
@@ -528,7 +529,7 @@ class CallbackEval(tf.keras.callbacks.Callback):
         self.dataset = dataset
 
     def on_epoch_end(self, epoch: int, logs=None):
-        model.save_weights("model.h5")
+        model.save_weights(SAVE_DIR / "model.h5")
         valid_accuracy = AverageMeter()
         valid_norm_ld = AverageMeter()
         # tqdm of the tensor dataset
@@ -708,20 +709,20 @@ keras_model_converter.optimizations = [tf.lite.Optimize.DEFAULT]
 keras_model_converter.target_spec.supported_types = [tf.float16]
 
 tflite_model = keras_model_converter.convert()
-with open('model.tflite', 'wb') as f:
+with open(SAVE_DIR / 'model.tflite', 'wb') as f:
     f.write(tflite_model)
 
-with open('inference_args.json', "w") as f:
+with open(SAVE_DIR / 'inference_args.json', "w") as f:
     json.dump({"selected_columns": SEL_COLS}, f)
 
 zp = zipfile.ZipFile(SAVE_DIR / 'submission.zip', mode='w')
 try:
-    zp.write('model.tflite')
-    zp.write('inference_args.json')
+    zp.write(SAVE_DIR / 'model.tflite')
+    zp.write(SAVE_DIR / 'inference_args.json')
 finally:
     zp.close()
 
-with open("inference_args.json", "r") as f:
+with open(SAVE_DIR / "inference_args.json", "r") as f:
     SEL_COLS = json.load(f)["selected_columns"]
 
 
@@ -756,9 +757,7 @@ def create_data_gen(file_ids, y_mul=1):
                 yield x, y
     return gen
 
-
 pqfiles = valid_pd_ids
-
 
 test_dataset = tf.data.Dataset.from_generator(create_data_gen(pqfiles, 0),
                                               output_signature=(tf.TensorSpec(shape=(None, len(
