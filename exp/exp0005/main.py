@@ -168,22 +168,6 @@ def pre_process0(x):
     lpose_y = tf.gather(x, LPOSE_IDX_Y, axis=1)
     lpose_z = tf.gather(x, LPOSE_IDX_Z, axis=1)
 
-    # rhand_diff_x_i = tf.gather(rhand_x, HAND_LINE_IDX_I, axis=1)
-    # rhand_diff_x_j = tf.gather(rhand_x, HAND_LINE_IDX_J, axis=1)
-    # rhand_diff_x = rhand_diff_x_j - rhand_diff_x_i
-
-    # rhand_diff_y_i = tf.gather(rhand_y, HAND_LINE_IDX_I, axis=1)
-    # rhand_diff_y_j = tf.gather(rhand_y, HAND_LINE_IDX_J, axis=1)
-    # rhand_diff_y = rhand_diff_y_j - rhand_diff_y_i
-
-    # lhand_diff_x_i = tf.gather(lhand_x, HAND_LINE_IDX_I, axis=1)
-    # lhand_diff_x_j = tf.gather(lhand_x, HAND_LINE_IDX_J, axis=1)
-    # lhand_diff_x = lhand_diff_x_j - lhand_diff_x_i
-
-    # lhand_diff_y_i = tf.gather(lhand_y, HAND_LINE_IDX_I, axis=1)
-    # lhand_diff_y_j = tf.gather(lhand_y, HAND_LINE_IDX_J, axis=1)
-    # lhand_diff_y = lhand_diff_y_j - lhand_diff_y_i
-
     lip = tf.concat([lip_x[..., tf.newaxis], lip_y[...,
                     tf.newaxis], lip_z[..., tf.newaxis]], axis=-1)
     rhand = tf.concat([rhand_x[..., tf.newaxis], rhand_y[...,
@@ -194,10 +178,6 @@ def pre_process0(x):
                       tf.newaxis], rpose_z[..., tf.newaxis]], axis=-1)
     lpose = tf.concat([lpose_x[..., tf.newaxis], lpose_y[...,
                       tf.newaxis], lpose_z[..., tf.newaxis]], axis=-1)
-    # hand_diff = tf.concat([rhand_diff_x[..., tf.newaxis],
-    #                        rhand_diff_y[..., tf.newaxis],
-    #                        lhand_diff_x[..., tf.newaxis],
-    #                        lhand_diff_y[..., tf.newaxis]], axis=-1)
 
     hand = tf.concat([rhand, lhand], axis=1)
     hand = tf.where(tf.math.is_nan(hand), 0.0, hand)
@@ -213,7 +193,7 @@ def pre_process0(x):
 
 
 @tf.function()
-def pre_process1(lip, rhand, lhand, rpose, lpose, hand_diff):
+def pre_process1(lip, rhand, lhand, rpose, lpose):
     # shape: (FRAME_LEN, n_landmarks, 3)
     # 距離
     rhand_diff_i = tf.gather(rhand, HAND_LINE_IDX_I, axis=1)
@@ -240,7 +220,6 @@ def pre_process1(lip, rhand, lhand, rpose, lpose, hand_diff):
     x = tf.concat([x, hand_diff], axis=1)
     s = tf.shape(x)
     x = tf.reshape(x, (s[0], s[1]*s[2]))
-    x = tf.concat([x, y], axis=1)
     x = tf.where(tf.math.is_nan(x), 0.0, x)
     return x
 
