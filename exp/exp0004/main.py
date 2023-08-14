@@ -11,14 +11,10 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 from Levenshtein import distance
 import zipfile
+from utils import AverageMeter, validation_metrics, seed_everything
 
 import warnings
 warnings.filterwarnings('ignore')
-
-
-class cfg:
-    pass
-
 
 EXP_PATH = Path.cwd()
 ROOT_DIR = EXP_PATH.parents[2]
@@ -179,6 +175,16 @@ def pre_process0(x):
 
 @tf.function()
 def pre_process1(lip, rhand, lhand, rpose, lpose):
+    # shape: (FRAME_LEN, n_landmarks, 3)
+
+    # ここに追加の特徴量を実装する
+    # rhandの距離
+    # rhandの角度
+    # rhandの速度
+    # rhandの加速度
+    # rhandの角速度
+    # rhandの角加速度
+
     lip = (resize_pad(lip) - LIPM) / LIPS
     rhand = (resize_pad(rhand) - RHM) / RHS
     lhand = (resize_pad(lhand) - LHM) / LHS
@@ -186,7 +192,7 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
     lpose = (resize_pad(lpose) - LPM) / LPS
 
     x = tf.concat([lip, rhand, lhand, rpose, lpose], axis=1)
-    x = x[:, :, :2]
+    x = x[:, :, :2]  # x, yだけ使う
     s = tf.shape(x)
     x = tf.reshape(x, (s[0], s[1]*s[2]))
     x = tf.where(tf.math.is_nan(x), 0.0, x)
@@ -482,8 +488,9 @@ def decode_batch_predictions(pred):
         output_text.append(result)
     return output_text
 
-
 # A callback class to output a few transcriptions during training
+
+
 class CallbackEval(tf.keras.callbacks.Callback):
     """Displays a batch of outputs after every epoch."""
 
@@ -493,22 +500,34 @@ class CallbackEval(tf.keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch: int, logs=None):
         model.save_weights("model.h5")
-        predictions = []
-        targets = []
-        for batch in self.dataset:
+        # predictions = []
+        # targets = []
+        valid_accuracy = AverageMeter()
+        valid_norm_ld = AverageMeter()
+        pbar = tqdm(self.dataset, total=len(self.dataset))
+        for batch in pbar:
             X, y = batch
+            bs = tf.shape(X)[0]
             batch_predictions = model(X)
             batch_predictions = decode_batch_predictions(batch_predictions)
-            predictions.extend(batch_predictions)
+            # predictions.extend(batch_predictions)
             for label in y:
-                label = "".join(num_to_char_fn(label.numpy()))
-                targets.append(label)
-        print("-" * 100)
+                label = "".join(num_to_char_fn(label.numpy())
+                                ).replace(pad_token, '')
+                # targets.append(label)
+            accuracy, norm_ld = validation_metrics(batch_predictions, label)
+            valid_accuracy.update(accuracy, n=bs)
+            valid_norm_ld.update(accuracy, n=bs)
+            pbar.set_postfix(
+                valid_accuracy=f"{valid_accuracy.avg:.4f}",
+                valid_norm_ld=f"{valid_norm_ld.avg:.4f}"
+            )
+
         # for i in np.random.randint(0, len(predictions), 2):
-        for i in range(32):
-            print(f"Target    : {targets[i]}")
-            print(f"Prediction: {predictions[i]}, len: {len(predictions[i])}")
-            print("-" * 100)
+        # for i in range(32):
+        #     print(f"Target    : {targets[i]}")
+        #     print(f"Prediction: {predictions[i]}, len: {len(predictions[i])}")
+        #     print("-" * 100)
 
 
 # Callback function to check transcription on the val set.
