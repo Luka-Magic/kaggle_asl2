@@ -18,8 +18,8 @@ from sklearn.model_selection import KFold
 import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
-DEBUG = True
-WANDB = False
+DEBUG = False
+WANDB = True
 # ====================================================
 
 N_FOLDS = 4
