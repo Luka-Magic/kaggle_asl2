@@ -19,7 +19,7 @@ import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
-WANDB = True
+WANDB = False
 # ====================================================
 
 N_FOLDS = 4
@@ -31,7 +31,7 @@ ROOT_DIR = EXP_PATH.parents[2]
 exp_name = EXP_PATH.name
 RAW_DATA_DIR = ROOT_DIR / 'data' / 'original_data'
 DATA_DIR = ROOT_DIR / 'data' / 'kaggle_dataset' / 'irohith_tfrecords'
-SAVE_DIR = ROOT_DIR / 'outputs' / (exp_name + f'_fold{FOLD}')
+SAVE_DIR = ROOT_DIR / 'outputs' / exp_name / f'fold{FOLD}'
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
@@ -252,6 +252,9 @@ tffiles = [str(DATA_DIR / f"tfds/{file_id}.tfrecord")
 # kfold
 wandb.init(project='kaggle-asl2', name=exp_name,
            mode='online' if WANDB else 'disabled')
+wandb_config = wandb.config
+wandb_config.fold = FOLD
+
 kf = KFold(n_splits=N_FOLDS, shuffle=True, random_state=SEED).split(tffiles)
 for fold, (train_indices, valid_indices) in enumerate(kf):
     if fold == FOLD:
@@ -521,12 +524,25 @@ def decode_batch_predictions(pred):
 # A callback class to output a few transcriptions during training
 
 
+if DEBUG:
+    N_EPOCHS = 2
+    N_WARMUP_EPOCHS = 0
+else:
+    N_EPOCHS = 50
+    N_WARMUP_EPOCHS = 10
+LR_MAX = 1e-3
+WD_RATIO = 0.05
+WARMUP_METHOD = "exp"
+
+
 class CallbackEval(tf.keras.callbacks.Callback):
     """Displays a batch of outputs after every epoch."""
 
     def __init__(self, dataset):
         super().__init__()
         self.dataset = dataset
+        self.best_norm_ld = float('inf')
+        self.best_norm_ld_epoch = 0
 
     def on_epoch_end(self, epoch: int, logs=None):
         model.save_weights(SAVE_DIR / "model.h5")
@@ -558,7 +574,6 @@ class CallbackEval(tf.keras.callbacks.Callback):
                 valid_accuracy=f"{valid_accuracy.avg:.4f}",
                 valid_norm_ld=f"{valid_norm_ld.avg:.4f}"
             )
-        # print(valid_data_num)
         wandb.log(
             {'epoch': epoch,
              'valid_accuracy': valid_accuracy.avg,
@@ -567,20 +582,24 @@ class CallbackEval(tf.keras.callbacks.Callback):
         for i in range(16):
             print(f"Target / Predict: {targets[i]} / {predictions[i]}")
 
+        update_flag = False
+        if valid_norm_ld.avg < self.best_norm_ld:
+            self.best_norm_ld = valid_norm_ld.avg
+            model.save_weights(SAVE_DIR / "best_model.h5")
+            self.best_norm_ld_epoch = epoch
+            update_flag = True
+        print('-*-' * 30)
+        print(f'【EPOCH {epoch}/{N_EPOCHS}】')
+        print(f'    valid_accuracy: {valid_accuracy.avg:.4f}')
+        print(
+            f'    valid_norm_ld: {valid_norm_ld.avg:.4f}{"*" if update_flag else ""}')
+        print(
+            f'    best_norm_ld: {self.best_norm_ld:.4f} (epoch {self.best_norm_ld_epoch})')
+        print('-*-' * 30)
+
 
 # Callback function to check transcription on the val set.
 validation_callback = CallbackEval(val_dataset)
-
-
-if DEBUG:
-    N_EPOCHS = 1
-    N_WARMUP_EPOCHS = 0
-else:
-    N_EPOCHS = 50
-    N_WARMUP_EPOCHS = 10
-LR_MAX = 1e-3
-WD_RATIO = 0.05
-WARMUP_METHOD = "exp"
 
 
 def lrfn(current_step, num_warmup_steps, lr_max, num_cycles=0.50, num_training_steps=N_EPOCHS):
@@ -672,6 +691,9 @@ history = model.fit(
     ]
 )
 
+# load best model
+model.load_weights(SAVE_DIR / "best_model.h5")
+
 
 class TFLiteModel(tf.Module):
     def __init__(self, model):
@@ -732,7 +754,7 @@ def load_relevant_data_subset(pq_path):
 
 
 valid_df = pd.DataFrame(
-    columns=['sequence_id', 'phrase', 'target', 'pred', 'score'])
+    columns=['sequence_id', 'phrase', 'pred', 'score'])
 
 
 def create_data_gen(file_ids, y_mul=1):
@@ -746,7 +768,7 @@ def create_data_gen(file_ids, y_mul=1):
                 x = seqs.iloc[seqs.index == seq_id].to_numpy()
                 y = str(df.loc[df.sequence_id == seq_id].phrase.iloc[0])
 
-                valid_df.loc[len(valid_df)] = [seq_id, y, '', '', float('nan')]
+                valid_df.loc[len(valid_df)] = [seq_id, y, '', float('nan')]
 
                 r_nonan = np.sum(
                     np.sum(np.isnan(x[:, RHAND_IDX_X]), axis=1) == 0)
@@ -792,7 +814,7 @@ for i, (frame, target) in tqdm(enumerate(test_dataset)):
     target = target.numpy().decode("utf-8")
     score = (len(target) - distance(prediction_str, target)) / len(target)
     scores.append(score)
-    valid_df.iloc[i, [2, 3, 4]] = [target, prediction_str, score]
+    valid_df.iloc[i, [2, 3]] = [prediction_str, score]
     if i % 50 == 0:
         print(np.sum(scores) / len(scores))
 

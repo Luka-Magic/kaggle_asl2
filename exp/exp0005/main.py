@@ -18,8 +18,8 @@ from sklearn.model_selection import KFold
 import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
-DEBUG = False
-WANDB = True
+DEBUG = True
+WANDB = False
 # ====================================================
 
 N_FOLDS = 4
@@ -561,12 +561,25 @@ def decode_batch_predictions(pred):
 # A callback class to output a few transcriptions during training
 
 
+if DEBUG:
+    N_EPOCHS = 2
+    N_WARMUP_EPOCHS = 0
+else:
+    N_EPOCHS = 50
+    N_WARMUP_EPOCHS = 10
+LR_MAX = 1e-3
+WD_RATIO = 0.05
+WARMUP_METHOD = "exp"
+
+
 class CallbackEval(tf.keras.callbacks.Callback):
     """Displays a batch of outputs after every epoch."""
 
     def __init__(self, dataset):
         super().__init__()
         self.dataset = dataset
+        self.best_norm_ld = float('inf')
+        self.best_norm_ld_epoch = 0
 
     def on_epoch_end(self, epoch: int, logs=None):
         model.save_weights(SAVE_DIR / "model.h5")
@@ -583,19 +596,21 @@ class CallbackEval(tf.keras.callbacks.Callback):
             valid_data_num += bs
             batch_predictions = model(X)
             batch_predictions = decode_batch_predictions(batch_predictions)
-            # predictions.extend(batch_predictions)
+            batch_targets = []
             for label in y:
                 label = "".join(num_to_char_fn(label.numpy())
                                 ).replace(pad_token, '')
-                targets.append(label)
-            accuracy, norm_ld = validation_metrics(batch_predictions, label)
+                batch_targets.append(label)
+            predictions.extend(batch_predictions)
+            targets.extend(batch_targets)
+            accuracy, norm_ld = validation_metrics(
+                batch_predictions, batch_targets)
             valid_accuracy.update(accuracy, n=bs)
             valid_norm_ld.update(norm_ld, n=bs)
             pbar.set_postfix(
                 valid_accuracy=f"{valid_accuracy.avg:.4f}",
                 valid_norm_ld=f"{valid_norm_ld.avg:.4f}"
             )
-        # print(valid_data_num)
         wandb.log(
             {'epoch': epoch,
              'valid_accuracy': valid_accuracy.avg,
@@ -604,20 +619,24 @@ class CallbackEval(tf.keras.callbacks.Callback):
         for i in range(16):
             print(f"Target / Predict: {targets[i]} / {predictions[i]}")
 
+        update_flag = False
+        if valid_norm_ld.avg < self.best_norm_ld:
+            self.best_norm_ld = valid_norm_ld.avg
+            model.save_weights(SAVE_DIR / "best_model.h5")
+            self.best_norm_ld_epoch = epoch
+            update_flag = True
+        print('-*-' * 30)
+        print(f'【EPOCH {epoch}/{N_EPOCHS}】')
+        print(f'    valid_accuracy: {valid_accuracy.avg:.4f}')
+        print(
+            f'    valid_norm_ld: {valid_norm_ld.avg:.4f}{"*" if update_flag else ""}')
+        print(
+            f'    best_norm_ld: {self.best_norm_ld:.4f} (epoch {self.best_norm_ld_epoch})')
+        print('-*-' * 30)
+
 
 # Callback function to check transcription on the val set.
 validation_callback = CallbackEval(val_dataset)
-
-
-if DEBUG:
-    N_EPOCHS = 1
-    N_WARMUP_EPOCHS = 0
-else:
-    N_EPOCHS = 50
-    N_WARMUP_EPOCHS = 10
-LR_MAX = 1e-3
-WD_RATIO = 0.05
-WARMUP_METHOD = "exp"
 
 
 def lrfn(current_step, num_warmup_steps, lr_max, num_cycles=0.50, num_training_steps=N_EPOCHS):
@@ -708,6 +727,9 @@ history = model.fit(
         WeightDecayCallback(),
     ]
 )
+
+# load best model
+model.load_weights(SAVE_DIR / "best_model.h5")
 
 
 class TFLiteModel(tf.Module):
