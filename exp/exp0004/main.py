@@ -241,9 +241,10 @@ def decode_fn(record_bytes):
 
 
 def pre_process_fn(lip, rhand, lhand, rpose, lpose, phrase):
+    empty_id = ''
     phrase = tf.pad(phrase, [
                     [0, MAX_PHRASE_LENGTH-tf.shape(phrase)[0]]], constant_values=pad_token_idx)
-    return pre_process1(lip, rhand, lhand, rpose, lpose), phrase
+    return pre_process1(lip, rhand, lhand, rpose, lpose), phrase, empty_id
 
 
 tffiles = [str(DATA_DIR / f"tfds/{file_id}.tfrecord")
@@ -534,7 +535,7 @@ class CallbackEval(tf.keras.callbacks.Callback):
         valid_data_num = 0
         pbar = tqdm(self.dataset)
         for batch in pbar:
-            X, y = batch
+            X, y, _ = batch
             bs = int(tf.shape(X)[0])
             valid_data_num += bs
             batch_predictions = model(X)
