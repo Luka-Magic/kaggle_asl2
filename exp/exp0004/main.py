@@ -512,7 +512,8 @@ class CallbackEval(tf.keras.callbacks.Callback):
         # targets = []
         valid_accuracy = AverageMeter()
         valid_norm_ld = AverageMeter()
-        pbar = tqdm(self.dataset, total=len(self.dataset))
+        # tqdm of the tensor dataset
+        pbar = tqdm(self.dataset))
         for batch in pbar:
             X, y = batch
             bs = tf.shape(X)[0]
