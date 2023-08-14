@@ -40,25 +40,25 @@ def get_lr(optimizer):
         return param_group['lr']
 
 
-def validation_metrics(pred, target):
+def validation_metrics(preds, targets):
     '''
         Input:
-            pred: list
+            preds: list
                 bs, seq_len
-            target: list
+            targets: list
                 bs, seq_len
     '''
     # calc acc
-    bs = len(pred)
+    bs = len(preds)
 
     # calc levenstein distance
     sum_norm_ld = 0
     sum_acc = 0
-    for i in range(bs):
-        N = len(target[i])
-        D = distance(pred[i], target[i])
+    for pred, target in zip(preds, targets):
+        N = len(target)
+        D = distance(pred, target)
         sum_norm_ld += (N - D) / N
-        sum_acc += int(pred[i] == target[i])
+        sum_acc += int(pred == target)
     norm_ld = sum_norm_ld / bs
     acc = sum_acc / bs
     return acc, norm_ld
