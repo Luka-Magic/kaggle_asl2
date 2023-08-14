@@ -5,10 +5,12 @@ import warnings
 from typing import List, Dict, Union, Tuple, Any
 import math
 from Levenshtein import distance
+import tensorflow as tf
 
 
 def seed_everything(seed):
     os.environ['PYTHONHASHSEED'] = str(seed)
+    tf.random.set_seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)

@@ -541,7 +541,7 @@ class CallbackEval(tf.keras.callbacks.Callback):
     def __init__(self, dataset):
         super().__init__()
         self.dataset = dataset
-        self.best_norm_ld = float('inf')
+        self.best_norm_ld = -1 * float('inf')
         self.best_norm_ld_epoch = 0
 
     def on_epoch_end(self, epoch: int, logs=None):
