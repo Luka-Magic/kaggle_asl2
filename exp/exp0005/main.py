@@ -731,7 +731,7 @@ def load_relevant_data_subset(pq_path):
 
 
 valid_df = pd.DataFrame(
-    columns=['sequence_id', 'phrase', 'target', 'pred', 'score'])
+    columns=['sequence_id', 'phrase', 'pred', 'score'])
 
 
 def create_data_gen(file_ids, y_mul=1):
@@ -745,7 +745,7 @@ def create_data_gen(file_ids, y_mul=1):
                 x = seqs.iloc[seqs.index == seq_id].to_numpy()
                 y = str(df.loc[df.sequence_id == seq_id].phrase.iloc[0])
 
-                valid_df.loc[len(valid_df)] = [seq_id, y, '', '', float('nan')]
+                valid_df.loc[len(valid_df)] = [seq_id, y, '', float('nan')]
 
                 r_nonan = np.sum(
                     np.sum(np.isnan(x[:, RHAND_IDX_X]), axis=1) == 0)
@@ -791,7 +791,7 @@ for i, (frame, target) in tqdm(enumerate(test_dataset)):
     target = target.numpy().decode("utf-8")
     score = (len(target) - distance(prediction_str, target)) / len(target)
     scores.append(score)
-    valid_df.iloc[i, [2, 3, 4]] = [target, prediction_str, score]
+    valid_df.iloc[i, [2, 3]] = [prediction_str, score]
     if i % 50 == 0:
         print(np.sum(scores) / len(scores))
 
