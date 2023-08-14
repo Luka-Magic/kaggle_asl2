@@ -202,9 +202,9 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
     # l / r hand = *2
     idx = 0
     for axis in [0, 1]:  # *2
-        for x_i, y_i in HAND_LINE_IDX:  # *21
-            y[:, idx] = rhand[:, x_i, axis] - rhand[:, y_i, axis]
-            y[:, idx + 42] = lhand[:, x_i, axis] - lhand[:, y_i, axis]
+        for i, j in HAND_LINE_IDX:  # *21
+            y[:, idx].assign(rhand[:, j, axis] - rhand[:, i, axis])
+            y[:, idx + 42].assign(lhand[:, j, axis] - lhand[:, i, axis])
             idx += 1
     # rhandの角度
     # rhandの速度
