@@ -18,8 +18,8 @@ from sklearn.model_selection import KFold
 import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
-DEBUG = False
-WANDB = True
+DEBUG = True
+WANDB = False
 # ====================================================
 
 N_FOLDS = 4
@@ -31,7 +31,7 @@ ROOT_DIR = EXP_PATH.parents[2]
 exp_name = EXP_PATH.name
 RAW_DATA_DIR = ROOT_DIR / 'data' / 'original_data'
 DATA_DIR = ROOT_DIR / 'data' / 'kaggle_dataset' / 'irohith_tfrecords'
-SAVE_DIR = ROOT_DIR / 'outputs' / (exp_name + f'_fold{FOLD}')
+SAVE_DIR = ROOT_DIR / 'outputs' / exp_name / f'fold{FOLD}'
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
@@ -102,6 +102,8 @@ RPOSE_IDX_Z = [i for i, col in enumerate(
     SEL_COLS) if "pose" in col and int(col[-2:]) in RPOSE and "z" in col]
 LPOSE_IDX_Z = [i for i, col in enumerate(
     SEL_COLS) if "pose" in col and int(col[-2:]) in LPOSE and "z" in col]
+HAND_LINE_IDX = [[0, 1], [0, 5], [0, 17], [1, 2], [2, 3], [3, 4], [5, 6], [5, 9], [6, 7], [7, 8], [
+    9, 10], [9, 13], [10, 11], [11, 12], [13, 14], [13, 17], [14, 15], [15, 16], [17, 18], [18, 19], [19, 20]]
 
 RHM = np.load(DATA_DIR / "mean_std/rh_mean.npy")
 LHM = np.load(DATA_DIR / "mean_std/lh_mean.npy")
@@ -187,12 +189,23 @@ def pre_process0(x):
     return lip, rhand, lhand, rpose, lpose
 
 
+N_ADDITIONAL_FEATURES = 84
+
+
 @tf.function()
 def pre_process1(lip, rhand, lhand, rpose, lpose):
     # shape: (FRAME_LEN, n_landmarks, 3)
+    # 追加特徴量用の空の配列を作成
+    y = tf.zeros((FRAME_LEN, N_ADDITIONAL_FEATURES))
 
-    # ここに追加の特徴量を実装する
-    # rhandの距離
+    # 距離
+    # l / r hand = *2
+    for axis in [0, 1]:  # *2
+        for i, j in HAND_LINE_IDX:  # *21
+            y[:, i] = tf.linalg.norm(
+                rhand[:, i, axis] - rhand[:, j, axis], axis=1)
+            y[:, i + 42] = tf.linalg.norm(
+                lhand[:, i, axis] - lhand[:, j, axis], axis=1)
     # rhandの角度
     # rhandの速度
     # rhandの加速度
@@ -209,6 +222,7 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
     x = x[:, :, :2]  # x, yだけ使う
     s = tf.shape(x)
     x = tf.reshape(x, (s[0], s[1]*s[2]))
+    x = tf.concat([x, y], axis=1)
     x = tf.where(tf.math.is_nan(x), 0.0, x)
     return x
 
@@ -252,6 +266,9 @@ tffiles = [str(DATA_DIR / f"tfds/{file_id}.tfrecord")
 # kfold
 wandb.init(project='kaggle-asl2', name=exp_name,
            mode='online' if WANDB else 'disabled')
+wandb_config = wandb.config
+wandb_config.fold = FOLD
+
 kf = KFold(n_splits=N_FOLDS, shuffle=True, random_state=SEED).split(tffiles)
 for fold, (train_indices, valid_indices) in enumerate(kf):
     if fold == FOLD:
@@ -457,10 +474,19 @@ def CTCLoss(labels, logits):
     return loss
 
 
+n_embed_layers = 1
+
+
 def get_model(dim=384, num_blocks=6, drop_rate=0.4):
     inp = tf.keras.Input(INPUT_SHAPE)
     x = tf.keras.layers.Masking(mask_value=0.0)(inp)
-    x = tf.keras.layers.Dense(dim, use_bias=False, name='stem_conv')(x)
+    if n_embed_layers == 2:
+        x = tf.keras.layers.Dense(dim, name=f'stem_conv_1', use_bias=False,
+                                  kernel_initializer=tf.keras.initializers.glorot_uniform, activation=tf.keras.activations.gelu),
+        x = tf.keras.layers.Dense(
+            dim, name=f'stem_conv_2', use_bias=False, kernel_initializer=tf.keras.initializers.he_uniform),
+    else:
+        x = tf.keras.layers.Dense(dim, use_bias=False, name='stem_conv')(x)
     pe = tf.cast(positional_encoding(INPUT_SHAPE[0], dim), dtype=x.dtype)
     x = x + pe
     x = tf.keras.layers.BatchNormalization(momentum=0.95, name='stem_bn')(x)
