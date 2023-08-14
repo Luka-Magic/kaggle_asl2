@@ -31,7 +31,7 @@ ROOT_DIR = EXP_PATH.parents[2]
 exp_name = EXP_PATH.name
 RAW_DATA_DIR = ROOT_DIR / 'data' / 'original_data'
 DATA_DIR = ROOT_DIR / 'data' / 'kaggle_dataset' / 'irohith_tfrecords'
-SAVE_DIR = ROOT_DIR / 'outputs' / (exp_name + f'_fold{FOLD}')
+SAVE_DIR = ROOT_DIR / 'outputs' / exp_name / f'fold{FOLD}'
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
@@ -103,6 +103,11 @@ RPOSE_IDX_Z = [i for i, col in enumerate(
 LPOSE_IDX_Z = [i for i, col in enumerate(
     SEL_COLS) if "pose" in col and int(col[-2:]) in LPOSE and "z" in col]
 
+HAND_LINE_IDX = [[0, 1], [0, 5], [0, 17], [1, 2], [2, 3], [3, 4], [5, 6], [5, 9], [6, 7], [7, 8], [
+    9, 10], [9, 13], [10, 11], [11, 12], [13, 14], [13, 17], [14, 15], [15, 16], [17, 18], [18, 19], [19, 20]]
+HAND_LINE_IDX_I = [HAND_LINE_IDX[i][0] for i in range(len(HAND_LINE_IDX))]
+HAND_LINE_IDX_J = [HAND_LINE_IDX[i][1] for i in range(len(HAND_LINE_IDX))]
+
 RHM = np.load(DATA_DIR / "mean_std/rh_mean.npy")
 LHM = np.load(DATA_DIR / "mean_std/lh_mean.npy")
 RPM = np.load(DATA_DIR / "mean_std/rp_mean.npy")
@@ -134,8 +139,12 @@ phrase = str(df.loc[df.sequence_id == seq_id].phrase.iloc[0])
 @tf.function()
 def resize_pad(x):
     if tf.shape(x)[0] < FRAME_LEN:
-        x = tf.pad(x, ([[0, FRAME_LEN-tf.shape(x)[0]], [0, 0],
-                   [0, 0]]), constant_values=float("NaN"))
+        if len(tf.shape(x)) == 2:
+            x = tf.pad(x, ([[0, FRAME_LEN-tf.shape(x)[0]], [0, 0]]),
+                       constant_values=float("NaN"))
+        else:
+            x = tf.pad(x, ([[0, FRAME_LEN-tf.shape(x)[0]], [0, 0],
+                            [0, 0]]), constant_values=float("NaN"))
     else:
         x = tf.image.resize(x, (FRAME_LEN, tf.shape(x)[1]))
     return x
@@ -190,25 +199,63 @@ def pre_process0(x):
 @tf.function()
 def pre_process1(lip, rhand, lhand, rpose, lpose):
     # shape: (FRAME_LEN, n_landmarks, 3)
+    # 距離
+    rhand_diff_i = tf.gather(rhand, HAND_LINE_IDX_I, axis=1)
+    rhand_diff_j = tf.gather(rhand, HAND_LINE_IDX_J, axis=1)
+    rhand_diff = rhand_diff_j - rhand_diff_i  # shape: (FRAME_LEN, 21, 3)
+    lhand_diff_i = tf.gather(lhand, HAND_LINE_IDX_I, axis=1)
+    lhand_diff_j = tf.gather(lhand, HAND_LINE_IDX_J, axis=1)
+    lhand_diff = lhand_diff_j - lhand_diff_i  # shape: (FRAME_LEN, 21, 3)
 
-    # ここに追加の特徴量を実装する
-    # rhandの距離
-    # rhandの角度
+    rhand_dist = tf.math.sqrt(tf.math.square(
+        rhand_diff[:, :, 0]) + tf.math.square(rhand_diff[:, :, 1]))[..., tf.newaxis]
+    lhand_dist = tf.math.sqrt(tf.math.square(
+        lhand_diff[:, :, 0]) + tf.math.square(rhand_diff[:, :, 1]))[..., tf.newaxis]
+    # handの角度
+    rhand_sin = rhand_diff[:, :, 1] / (rhand_dist[:, :, 0] + 1e-8)
+    rhand_cos = rhand_diff[:, :, 0] / (rhand_dist[:, :, 0] + 1e-8)
+    rhand_angle = tf.math.atan2(rhand_sin, rhand_cos)[..., tf.newaxis]
+    lhand_sin = lhand_diff[:, :, 1] / (lhand_dist[:, :, 0] + 1e-8)
+    lhand_cos = lhand_diff[:, :, 0] / (lhand_dist[:, :, 0] + 1e-8)
+    lhand_angle = tf.math.atan2(lhand_sin, lhand_cos)[..., tf.newaxis]
     # rhandの速度
+    rhand_v = rhand[1:] - rhand[:-1]
+    rhand_v = tf.pad(rhand_v, ([[1, 0], [0, 0]]),
+                     constant_values=float("NaN"))
+    lhand_v = lhand[1:] - lhand[:-1]
+    lhand_v = tf.pad(lhand_v, ([[1, 0], [0, 0]]),
+                     constant_values=float("NaN"))
     # rhandの加速度
+    rhand_a = rhand_v[1:] - rhand_v[:-1]
+    rhand_a = tf.pad(rhand_a, ([[2, 0], [0, 0]]),
+                     constant_values=float("NaN"))
+    lhand_a = lhand_v[1:] - lhand_v[:-1]
+    lhand_a = tf.pad(lhand_a, ([[2, 0], [0, 0]]),
+                     constant_values=float("NaN"))
     # rhandの角速度
-    # rhandの角加速度
+    rhand_w = rhand_angle[1:] - rhand_angle[:-1]
+    rhand_w = tf.pad(rhand_w, ([[1, 0], [0, 0]]),
+                     constant_values=float("NaN"))
+    lhand_w = lhand_angle[1:] - lhand_angle[:-1]
+    lhand_w = tf.pad(lhand_w, ([[1, 0], [0, 0]]),
+                     constant_values=float("NaN"))
 
     lip = (resize_pad(lip) - LIPM) / LIPS
     rhand = (resize_pad(rhand) - RHM) / RHS
     lhand = (resize_pad(lhand) - LHM) / LHS
     rpose = (resize_pad(rpose) - RPM) / RPS
     lpose = (resize_pad(lpose) - LPM) / LPS
+    rhand_diff = resize_pad(rhand_diff)
+    lhand_diff = resize_pad(lhand_diff)
+    rhand_dist = resize_pad(rhand_dist)[:, :, 0]
+    lhand_dist = resize_pad(lhand_dist)[:, :, 0]
 
-    x = tf.concat([lip, rhand, lhand, rpose, lpose], axis=1)
+    x = tf.concat([lip, rhand, lhand, rpose, lpose,
+                  rhand_diff, lhand_diff], axis=1)
     x = x[:, :, :2]  # x, yだけ使う
     s = tf.shape(x)
     x = tf.reshape(x, (s[0], s[1]*s[2]))
+    x = tf.concat([x, rhand_dist, lhand_dist], axis=1)
     x = tf.where(tf.math.is_nan(x), 0.0, x)
     return x
 
@@ -252,6 +299,9 @@ tffiles = [str(DATA_DIR / f"tfds/{file_id}.tfrecord")
 # kfold
 wandb.init(project='kaggle-asl2', name=exp_name,
            mode='online' if WANDB else 'disabled')
+wandb_config = wandb.config
+wandb_config.fold = FOLD
+
 kf = KFold(n_splits=N_FOLDS, shuffle=True, random_state=SEED).split(tffiles)
 for fold, (train_indices, valid_indices) in enumerate(kf):
     if fold == FOLD:
@@ -457,10 +507,19 @@ def CTCLoss(labels, logits):
     return loss
 
 
+n_embed_layers = 1
+
+
 def get_model(dim=384, num_blocks=6, drop_rate=0.4):
     inp = tf.keras.Input(INPUT_SHAPE)
     x = tf.keras.layers.Masking(mask_value=0.0)(inp)
-    x = tf.keras.layers.Dense(dim, use_bias=False, name='stem_conv')(x)
+    if n_embed_layers == 2:
+        x = tf.keras.layers.Dense(dim, name=f'stem_conv_1', use_bias=False,
+                                  kernel_initializer=tf.keras.initializers.glorot_uniform, activation=tf.keras.activations.gelu),
+        x = tf.keras.layers.Dense(
+            dim, name=f'stem_conv_2', use_bias=False, kernel_initializer=tf.keras.initializers.he_uniform),
+    else:
+        x = tf.keras.layers.Dense(dim, use_bias=False, name='stem_conv')(x)
     pe = tf.cast(positional_encoding(INPUT_SHAPE[0], dim), dtype=x.dtype)
     x = x + pe
     x = tf.keras.layers.BatchNormalization(momentum=0.95, name='stem_bn')(x)
@@ -543,14 +602,12 @@ class CallbackEval(tf.keras.callbacks.Callback):
             valid_data_num += bs
             batch_predictions = model(X)
             batch_predictions = decode_batch_predictions(batch_predictions)
-            batch_targets = []
+            # predictions.extend(batch_predictions)
             for label in y:
                 label = "".join(num_to_char_fn(label.numpy())
                                 ).replace(pad_token, '')
-                batch_targets.append(label)
-            predictions.extend(batch_predictions)
-            targets.extend(batch_targets)
-            accuracy, norm_ld = validation_metrics(batch_predictions, batch_targets)
+                targets.append(label)
+            accuracy, norm_ld = validation_metrics(batch_predictions, label)
             valid_accuracy.update(accuracy, n=bs)
             valid_norm_ld.update(norm_ld, n=bs)
             pbar.set_postfix(
@@ -731,7 +788,7 @@ def load_relevant_data_subset(pq_path):
 
 
 valid_df = pd.DataFrame(
-    columns=['sequence_id', 'phrase', 'target', 'pred', 'score'])
+    columns=['sequence_id', 'phrase', 'pred', 'score'])
 
 
 def create_data_gen(file_ids, y_mul=1):
@@ -745,7 +802,7 @@ def create_data_gen(file_ids, y_mul=1):
                 x = seqs.iloc[seqs.index == seq_id].to_numpy()
                 y = str(df.loc[df.sequence_id == seq_id].phrase.iloc[0])
 
-                valid_df.loc[len(valid_df)] = [seq_id, y, '', '', float('nan')]
+                valid_df.loc[len(valid_df)] = [seq_id, y, '', float('nan')]
 
                 r_nonan = np.sum(
                     np.sum(np.isnan(x[:, RHAND_IDX_X]), axis=1) == 0)
@@ -791,7 +848,7 @@ for i, (frame, target) in tqdm(enumerate(test_dataset)):
     target = target.numpy().decode("utf-8")
     score = (len(target) - distance(prediction_str, target)) / len(target)
     scores.append(score)
-    valid_df.iloc[i, [2, 3, 4]] = [target, prediction_str, score]
+    valid_df.iloc[i, [2, 3]] = [prediction_str, score]
     if i % 50 == 0:
         print(np.sum(scores) / len(scores))
 
