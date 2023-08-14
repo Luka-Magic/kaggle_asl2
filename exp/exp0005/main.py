@@ -168,21 +168,21 @@ def pre_process0(x):
     lpose_y = tf.gather(x, LPOSE_IDX_Y, axis=1)
     lpose_z = tf.gather(x, LPOSE_IDX_Z, axis=1)
 
-    rhand_diff_x_i = tf.gather(rhand_x, HAND_LINE_IDX_I, axis=1)
-    rhand_diff_x_j = tf.gather(rhand_x, HAND_LINE_IDX_J, axis=1)
-    rhand_diff_x = rhand_diff_x_j - rhand_diff_x_i
+    # rhand_diff_x_i = tf.gather(rhand_x, HAND_LINE_IDX_I, axis=1)
+    # rhand_diff_x_j = tf.gather(rhand_x, HAND_LINE_IDX_J, axis=1)
+    # rhand_diff_x = rhand_diff_x_j - rhand_diff_x_i
 
-    rhand_diff_y_i = tf.gather(rhand_y, HAND_LINE_IDX_I, axis=1)
-    rhand_diff_y_j = tf.gather(rhand_y, HAND_LINE_IDX_J, axis=1)
-    rhand_diff_y = rhand_diff_y_j - rhand_diff_y_i
+    # rhand_diff_y_i = tf.gather(rhand_y, HAND_LINE_IDX_I, axis=1)
+    # rhand_diff_y_j = tf.gather(rhand_y, HAND_LINE_IDX_J, axis=1)
+    # rhand_diff_y = rhand_diff_y_j - rhand_diff_y_i
 
-    lhand_diff_x_i = tf.gather(lhand_x, HAND_LINE_IDX_I, axis=1)
-    lhand_diff_x_j = tf.gather(lhand_x, HAND_LINE_IDX_J, axis=1)
-    lhand_diff_x = lhand_diff_x_j - lhand_diff_x_i
+    # lhand_diff_x_i = tf.gather(lhand_x, HAND_LINE_IDX_I, axis=1)
+    # lhand_diff_x_j = tf.gather(lhand_x, HAND_LINE_IDX_J, axis=1)
+    # lhand_diff_x = lhand_diff_x_j - lhand_diff_x_i
 
-    lhand_diff_y_i = tf.gather(lhand_y, HAND_LINE_IDX_I, axis=1)
-    lhand_diff_y_j = tf.gather(lhand_y, HAND_LINE_IDX_J, axis=1)
-    lhand_diff_y = lhand_diff_y_j - lhand_diff_y_i
+    # lhand_diff_y_i = tf.gather(lhand_y, HAND_LINE_IDX_I, axis=1)
+    # lhand_diff_y_j = tf.gather(lhand_y, HAND_LINE_IDX_J, axis=1)
+    # lhand_diff_y = lhand_diff_y_j - lhand_diff_y_i
 
     lip = tf.concat([lip_x[..., tf.newaxis], lip_y[...,
                     tf.newaxis], lip_z[..., tf.newaxis]], axis=-1)
@@ -194,10 +194,10 @@ def pre_process0(x):
                       tf.newaxis], rpose_z[..., tf.newaxis]], axis=-1)
     lpose = tf.concat([lpose_x[..., tf.newaxis], lpose_y[...,
                       tf.newaxis], lpose_z[..., tf.newaxis]], axis=-1)
-    hand_diff = tf.concat([rhand_diff_x[..., tf.newaxis],
-                           rhand_diff_y[..., tf.newaxis],
-                           lhand_diff_x[..., tf.newaxis],
-                           lhand_diff_y[..., tf.newaxis]], axis=-1)
+    # hand_diff = tf.concat([rhand_diff_x[..., tf.newaxis],
+    #                        rhand_diff_y[..., tf.newaxis],
+    #                        lhand_diff_x[..., tf.newaxis],
+    #                        lhand_diff_y[..., tf.newaxis]], axis=-1)
 
     hand = tf.concat([rhand, lhand], axis=1)
     hand = tf.where(tf.math.is_nan(hand), 0.0, hand)
@@ -208,28 +208,20 @@ def pre_process0(x):
     lhand = lhand[mask]
     rpose = rpose[mask]
     lpose = lpose[mask]
-    hand_diff = hand_diff[mask]
 
-    return lip, rhand, lhand, rpose, lpose, hand_diff
-
-
-N_ADDITIONAL_FEATURES = 84
+    return lip, rhand, lhand, rpose, lpose
 
 
 @tf.function()
 def pre_process1(lip, rhand, lhand, rpose, lpose, hand_diff):
     # shape: (FRAME_LEN, n_landmarks, 3)
-    # 追加特徴量用の空の配列を作成
-
     # 距離
-    # l / r hand = *2
-
-    # idx = 0
-    # for axis in [0, 1]:  # *2
-    #     for i, j in HAND_LINE_IDX:  # *21
-    #         y[:, idx].assign(rhand[:, j, axis] - rhand[:, i, axis])
-    #         y[:, idx + 42].assign(lhand[:, j, axis] - lhand[:, i, axis])
-    #         idx += 1
+    rhand_diff_i = tf.gather(rhand, HAND_LINE_IDX_I, axis=1)
+    rhand_diff_j = tf.gather(rhand, HAND_LINE_IDX_J, axis=1)
+    rhand_diff = rhand_diff_j - rhand_diff_i
+    lhand_diff_i = tf.gather(lhand, HAND_LINE_IDX_I, axis=1)
+    lhand_diff_j = tf.gather(lhand, HAND_LINE_IDX_J, axis=1)
+    lhand_diff = lhand_diff_j - lhand_diff_i
     # rhandの角度
     # rhandの速度
     # rhandの加速度
@@ -242,7 +234,8 @@ def pre_process1(lip, rhand, lhand, rpose, lpose, hand_diff):
     rpose = (resize_pad(rpose) - RPM) / RPS
     lpose = (resize_pad(lpose) - LPM) / LPS
 
-    x = tf.concat([lip, rhand, lhand, rpose, lpose], axis=1)
+    x = tf.concat([lip, rhand, lhand, rpose, lpose,
+                  rhand_diff, lhand_diff], axis=1)
     x = x[:, :, :2]  # x, yだけ使う
     x = tf.concat([x, hand_diff], axis=1)
     s = tf.shape(x)
