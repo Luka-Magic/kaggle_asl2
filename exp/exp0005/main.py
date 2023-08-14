@@ -212,9 +212,9 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
     # lhand_dist = tf.math.sqrt(tf.math.square(tf.gather(
     #     lhand_diff, 0, axis=2)) + tf.math.square(tf.gather(lhand_diff, 1, axis=2)))
     rhand_dist = tf.math.sqrt(tf.math.square(
-        rhand_diff[:, :, 0]) + tf.math.square(rhand_diff[:, :, 1]))
+        rhand_diff[:, :, 0]) + tf.math.square(rhand_diff[:, :, 1]))[..., tf.newaxis]
     lhand_dist = tf.math.sqrt(tf.math.square(
-        lhand_diff[:, :, 0]) + tf.math.square(rhand_diff[:, :, 1]))
+        lhand_diff[:, :, 0]) + tf.math.square(rhand_diff[:, :, 1]))[..., tf.newaxis]
     # rhandの角度
     # rhandの速度
     # rhandの加速度
