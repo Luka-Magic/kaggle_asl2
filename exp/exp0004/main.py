@@ -32,7 +32,7 @@ ROOT_DIR = EXP_PATH.parents[2]
 exp_name = EXP_PATH.name
 RAW_DATA_DIR = ROOT_DIR / 'data' / 'original_data'
 DATA_DIR = ROOT_DIR / 'data' / 'kaggle_dataset' / 'irohith_tfrecords'
-SAVE_DIR = ROOT_DIR / 'outputs' / exp_name + '_fold{FOLD}'
+SAVE_DIR = ROOT_DIR / 'outputs' / exp_name + f'_fold{FOLD}'
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
