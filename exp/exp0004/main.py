@@ -12,6 +12,7 @@ import tensorflow_addons as tfa
 from Levenshtein import distance
 import zipfile
 from utils import AverageMeter, validation_metrics, seed_everything
+import wandb
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -26,6 +27,9 @@ SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
     char_to_num = json.load(f)
+
+wandb.login()
+wandb.init(project='kaggle-asl2', name=exp_name)
 
 # ====================================================
 DEBUG = True
@@ -508,15 +512,15 @@ class CallbackEval(tf.keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch: int, logs=None):
         model.save_weights("model.h5")
-        # predictions = []
-        # targets = []
         valid_accuracy = AverageMeter()
         valid_norm_ld = AverageMeter()
         # tqdm of the tensor dataset
+        valid_data_num = 0
         pbar = tqdm(self.dataset)
         for batch in pbar:
             X, y = batch
             bs = int(tf.shape(X)[0])
+            valid_data_num += bs
             batch_predictions = model(X)
             batch_predictions = decode_batch_predictions(batch_predictions)
             # predictions.extend(batch_predictions)
@@ -525,15 +529,18 @@ class CallbackEval(tf.keras.callbacks.Callback):
                                 ).replace(pad_token, '')
                 # targets.append(label)
             accuracy, norm_ld = validation_metrics(batch_predictions, label)
-            print(bs)
-            print(accuracy)
-            print(norm_ld)
             valid_accuracy.update(accuracy, n=bs)
             valid_norm_ld.update(norm_ld, n=bs)
             pbar.set_postfix(
                 valid_accuracy=f"{valid_accuracy.avg:.4f}",
                 valid_norm_ld=f"{valid_norm_ld.avg:.4f}"
             )
+        print(valid_data_num)
+        wandb.log(
+            {'epoch': epoch,
+             'valid_accuracy': valid_accuracy.avg,
+             'valid_norm_ld': valid_norm_ld.avg}
+        )
 
         # for i in np.random.randint(0, len(predictions), 2):
         # for i in range(32):
@@ -546,7 +553,7 @@ class CallbackEval(tf.keras.callbacks.Callback):
 validation_callback = CallbackEval(val_dataset.take(1))
 
 if DEBUG:
-    N_EPOCHS = 1
+    N_EPOCHS = 2
     N_WARMUP_EPOCHS = 0
 else:
     N_EPOCHS = 50
@@ -733,7 +740,7 @@ test_dataset = tf.data.Dataset.from_generator(create_data_gen(pqfiles[:val_len],
                                               output_signature=(tf.TensorSpec(shape=(None, len(
                                                   SEL_COLS)), dtype=tf.float32), tf.TensorSpec(shape=(), dtype=tf.string))
                                               ).prefetch(buffer_size=2000)
-
+wandb.finish()
 interpreter = tf.lite.Interpreter("model.tflite")
 
 REQUIRED_SIGNATURE = "serving_default"
