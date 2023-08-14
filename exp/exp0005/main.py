@@ -139,8 +139,12 @@ phrase = str(df.loc[df.sequence_id == seq_id].phrase.iloc[0])
 @tf.function()
 def resize_pad(x):
     if tf.shape(x)[0] < FRAME_LEN:
-        x = tf.pad(x, ([[0, FRAME_LEN-tf.shape(x)[0]], [0, 0],
-                   [0, 0]]), constant_values=float("NaN"))
+        if len(tf.shape(x)) == 2:
+            x = tf.pad(x, ([[0, FRAME_LEN-tf.shape(x)[0]], [0, 0]]),
+                       constant_values=float("NaN"))
+        else:
+            x = tf.pad(x, ([[0, FRAME_LEN-tf.shape(x)[0]], [0, 0],
+                            [0, 0]]), constant_values=float("NaN"))
     else:
         x = tf.image.resize(x, (FRAME_LEN, tf.shape(x)[1]))
     return x
