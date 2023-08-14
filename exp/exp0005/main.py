@@ -575,6 +575,8 @@ class CallbackEval(tf.keras.callbacks.Callback):
         # tqdm of the tensor dataset
         valid_data_num = 0
         pbar = tqdm(self.dataset)
+        targets = []
+        predictions = []
         for batch in pbar:
             X, y = batch
             bs = int(tf.shape(X)[0])
@@ -585,7 +587,7 @@ class CallbackEval(tf.keras.callbacks.Callback):
             for label in y:
                 label = "".join(num_to_char_fn(label.numpy())
                                 ).replace(pad_token, '')
-                # targets.append(label)
+                targets.append(label)
             accuracy, norm_ld = validation_metrics(batch_predictions, label)
             valid_accuracy.update(accuracy, n=bs)
             valid_norm_ld.update(norm_ld, n=bs)
@@ -599,12 +601,8 @@ class CallbackEval(tf.keras.callbacks.Callback):
              'valid_accuracy': valid_accuracy.avg,
              'valid_norm_ld': valid_norm_ld.avg}
         )
-
-        # for i in np.random.randint(0, len(predictions), 2):
-        # for i in range(32):
-        #     print(f"Target    : {targets[i]}")
-        #     print(f"Prediction: {predictions[i]}, len: {len(predictions[i])}")
-        #     print("-" * 100)
+        for i in range(16):
+            print(f"Target / Predict: {targets[i]} / {predictions[i]}")
 
 
 # Callback function to check transcription on the val set.
