@@ -202,6 +202,15 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
     lhand_diff_i = tf.gather(lhand, HAND_LINE_IDX_I, axis=1)
     lhand_diff_j = tf.gather(lhand, HAND_LINE_IDX_J, axis=1)
     lhand_diff = lhand_diff_j - lhand_diff_i  # shape: (FRAME_LEN, 21, 3)
+
+    # rhand_dist = tf.math.sqrt(tf.math.square(tf.gather(
+    #     rhand_diff, 0, axis=2)) + tf.math.square(tf.gather(rhand_diff, 1, axis=2)))
+    # lhand_dist = tf.math.sqrt(tf.math.square(tf.gather(
+    #     lhand_diff, 0, axis=2)) + tf.math.square(tf.gather(lhand_diff, 1, axis=2)))
+    rhand_dist = tf.math.sqrt(tf.math.square(
+        rhand_diff[:, :, 0]) + tf.math.square(rhand_diff[:, :, 1]))
+    lhand_dist = tf.math.sqrt(tf.math.square(
+        lhand_diff[:, :, 0]) + tf.math.square(rhand_diff[:, :, 1]))
     # rhandの角度
     # rhandの速度
     # rhandの加速度
@@ -221,6 +230,7 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
     x = x[:, :, :2]  # x, yだけ使う
     s = tf.shape(x)
     x = tf.reshape(x, (s[0], s[1]*s[2]))
+    x = tf.concat([x, rhand_dist, lhand_dist], axis=1)
     x = tf.where(tf.math.is_nan(x), 0.0, x)
     return x
 
