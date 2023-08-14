@@ -17,6 +17,12 @@ from sklearn.model_selection import KFold
 
 import warnings
 warnings.filterwarnings('ignore')
+# ====================================================
+DEBUG = True
+# ====================================================
+
+N_FOLDS = 4
+FOLD = 0
 
 SEED = 77
 
@@ -25,18 +31,14 @@ ROOT_DIR = EXP_PATH.parents[2]
 exp_name = EXP_PATH.name
 RAW_DATA_DIR = ROOT_DIR / 'data' / 'original_data'
 DATA_DIR = ROOT_DIR / 'data' / 'kaggle_dataset' / 'irohith_tfrecords'
-SAVE_DIR = ROOT_DIR / 'outputs' / exp_name
+SAVE_DIR = ROOT_DIR / 'outputs' / exp_name + '_fold{FOLD}'
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
     char_to_num = json.load(f)
 
 wandb.login()
-wandb.init(project='kaggle-asl2', name=exp_name)
 
-# ====================================================
-DEBUG = False
-# ====================================================
 
 pad_token = '^'
 pad_token_idx = 59
@@ -247,8 +249,7 @@ tffiles = [str(DATA_DIR / f"tfds/{file_id}.tfrecord")
            for file_id in df.file_id.unique()]
 
 # kfold
-N_FOLDS = 4
-FOLD = 0
+wandb.init(project='kaggle-asl2', name=exp_name)
 kf = KFold(n_splits=N_FOLDS, shuffle=True, random_state=SEED).split(tffiles)
 for fold, (train_indices, valid_indices) in enumerate(kf):
     if fold == FOLD:
@@ -743,7 +744,7 @@ def create_data_gen(file_ids, y_mul=1):
                 no_nan = max(r_nonan, l_nonan)
 
                 if y_mul*len(y) < no_nan:
-                    yield x, y
+                    yield x, y, seq_id
     return gen
 
 
@@ -777,7 +778,8 @@ output = prediction_fn(inputs=frame)
 
 scores = []
 
-for i, (frame, target) in tqdm(enumerate(test_dataset.take(1000))):
+for i, (frame, target, id_) in tqdm(enumerate(test_dataset.take(1000))):
+    print(target, id_)
     output = prediction_fn(inputs=frame)
     prediction_str = "".join([rev_character_map.get(s, "")
                              for s in np.argmax(output[REQUIRED_OUTPUT], axis=1)])
