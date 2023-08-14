@@ -550,7 +550,8 @@ class CallbackEval(tf.keras.callbacks.Callback):
                 batch_targets.append(label)
             predictions.extend(batch_predictions)
             targets.extend(batch_targets)
-            accuracy, norm_ld = validation_metrics(batch_predictions, batch_targets)
+            accuracy, norm_ld = validation_metrics(
+                batch_predictions, batch_targets)
             valid_accuracy.update(accuracy, n=bs)
             valid_norm_ld.update(norm_ld, n=bs)
             pbar.set_postfix(
