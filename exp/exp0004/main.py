@@ -758,9 +758,8 @@ def create_data_gen(file_ids, y_mul=1):
     return gen
 
 
-pqfiles = valid_pd_ids
-print(pqfiles)
-
+pqfiles = np.array(valid_pd_ids, dtype=np.int64)
+print('pqfiles: ', pqfiles)
 test_dataset = tf.data.Dataset.from_generator(create_data_gen(pqfiles, 0),
                                               output_signature=(tf.TensorSpec(shape=(None, len(
                                                   SEL_COLS)), dtype=tf.float32), tf.TensorSpec(shape=(), dtype=tf.string))
