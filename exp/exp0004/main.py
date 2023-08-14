@@ -243,10 +243,10 @@ train_batch_size = 32
 val_batch_size = 32
 
 if DEBUG:
-    train_dataset = tf.data.TFRecordDataset(tffiles[1:3]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
+    train_dataset = tf.data.TFRecordDataset(tffiles[1:1]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(train_batch_size).prefetch(tf.data.AUTOTUNE)
 else:
-    train_dataset = tf.data.TFRecordDataset(tffiles[val_len:2]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
+    train_dataset = tf.data.TFRecordDataset(tffiles[val_len:]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(train_batch_size).prefetch(tf.data.AUTOTUNE)
 val_dataset = tf.data.TFRecordDataset(tffiles[:val_len]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
     pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(val_batch_size).prefetch(tf.data.AUTOTUNE)
@@ -516,7 +516,7 @@ class CallbackEval(tf.keras.callbacks.Callback):
         pbar = tqdm(self.dataset)
         for batch in pbar:
             X, y = batch
-            bs = tf.shape(X)[0]
+            bs = int(tf.shape(X)[0])
             batch_predictions = model(X)
             batch_predictions = decode_batch_predictions(batch_predictions)
             # predictions.extend(batch_predictions)
