@@ -265,13 +265,13 @@ if DEBUG:
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(train_batch_size).prefetch(tf.data.AUTOTUNE)
     val_dataset = tf.data.TFRecordDataset(tffiles[1:2]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(val_batch_size).prefetch(tf.data.AUTOTUNE)
-    valid_pd_ids = [tffiles[1:2]]
+    valid_pd_ids = [int(Path(path_str).stem) for path_str in tffiles[1:2]]
 else:
     train_dataset = tf.data.TFRecordDataset([tffiles[i] for i in train_indices.tolist()]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(train_batch_size).prefetch(tf.data.AUTOTUNE)
     val_dataset = tf.data.TFRecordDataset([tffiles[i] for i in valid_indices.tolist()]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(val_batch_size).prefetch(tf.data.AUTOTUNE)
-    valid_pd_ids = [Path(tffiles[i]).stem for i in valid_indices.tolist()]
+    valid_pd_ids = [int(Path(tffiles[i]).stem) for i in valid_indices.tolist()]
 
 batch = next(iter(val_dataset))
 print(batch[0].shape, batch[1].shape)
