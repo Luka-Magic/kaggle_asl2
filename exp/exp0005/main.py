@@ -224,6 +224,8 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
     lpose = (resize_pad(lpose) - LPM) / LPS
     rhand_diff = resize_pad(rhand_diff)
     lhand_diff = resize_pad(lhand_diff)
+    rhand_dist = resize_pad(rhand_dist)
+    lhand_dist = resize_pad(lhand_dist)
 
     x = tf.concat([lip, rhand, lhand, rpose, lpose,
                   rhand_diff, lhand_diff], axis=1)
