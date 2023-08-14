@@ -525,8 +525,11 @@ class CallbackEval(tf.keras.callbacks.Callback):
                                 ).replace(pad_token, '')
                 # targets.append(label)
             accuracy, norm_ld = validation_metrics(batch_predictions, label)
+            print(bs)
+            print(accuracy)
+            print(norm_ld)
             valid_accuracy.update(accuracy, n=bs)
-            valid_norm_ld.update(accuracy, n=bs)
+            valid_norm_ld.update(norm_ld, n=bs)
             pbar.set_postfix(
                 valid_accuracy=f"{valid_accuracy.avg:.4f}",
                 valid_norm_ld=f"{valid_norm_ld.avg:.4f}"
