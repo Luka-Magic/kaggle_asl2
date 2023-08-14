@@ -241,10 +241,9 @@ def decode_fn(record_bytes):
 
 
 def pre_process_fn(lip, rhand, lhand, rpose, lpose, phrase):
-    empty_id = ''
     phrase = tf.pad(phrase, [
                     [0, MAX_PHRASE_LENGTH-tf.shape(phrase)[0]]], constant_values=pad_token_idx)
-    return pre_process1(lip, rhand, lhand, rpose, lpose), phrase, empty_id
+    return pre_process1(lip, rhand, lhand, rpose, lpose), phrase
 
 
 tffiles = [str(DATA_DIR / f"tfds/{file_id}.tfrecord")
@@ -257,6 +256,7 @@ kf = KFold(n_splits=N_FOLDS, shuffle=True, random_state=SEED).split(tffiles)
 for fold, (train_indices, valid_indices) in enumerate(kf):
     if fold == FOLD:
         break
+valid_pd_ids = [Path(tffiles[i]).stem for i in valid_indices.tolist()]
 
 train_batch_size = 32
 val_batch_size = 32
@@ -535,7 +535,7 @@ class CallbackEval(tf.keras.callbacks.Callback):
         valid_data_num = 0
         pbar = tqdm(self.dataset)
         for batch in pbar:
-            X, y, _ = batch
+            X, y = batch
             bs = int(tf.shape(X)[0])
             valid_data_num += bs
             batch_predictions = model(X)
@@ -729,6 +729,10 @@ def load_relevant_data_subset(pq_path):
     return pd.read_parquet(pq_path, columns=SEL_COLS)
 
 
+valid_df = pd.DataFrame(
+    columns=['sequence_id', 'phrase', 'target', 'pred', 'score'])
+
+
 def create_data_gen(file_ids, y_mul=1):
     def gen():
         for file_id in file_ids:
@@ -740,25 +744,26 @@ def create_data_gen(file_ids, y_mul=1):
                 x = seqs.iloc[seqs.index == seq_id].to_numpy()
                 y = str(df.loc[df.sequence_id == seq_id].phrase.iloc[0])
 
+                valid_df.loc[len(valid_df)] = [seq_id, y, '', '', float('nan')]
+
                 r_nonan = np.sum(
                     np.sum(np.isnan(x[:, RHAND_IDX_X]), axis=1) == 0)
                 l_nonan = np.sum(
                     np.sum(np.isnan(x[:, LHAND_IDX_X]), axis=1) == 0)
                 no_nan = max(r_nonan, l_nonan)
 
-                if y_mul*len(y) < no_nan:
-                    yield x, y, seq_id
+                # if y_mul*len(y) < no_nan:
+                yield x, y
     return gen
 
 
-pqfiles = df.file_id.unique()
-val_len = int(0.05 * len(pqfiles))
+pqfiles = valid_pd_ids
 
-test_dataset = tf.data.Dataset.from_generator(create_data_gen(pqfiles[:val_len], 0),
+
+test_dataset = tf.data.Dataset.from_generator(create_data_gen(pqfiles, 0),
                                               output_signature=(tf.TensorSpec(shape=(None, len(
                                                   SEL_COLS)), dtype=tf.float32), tf.TensorSpec(shape=(), dtype=tf.string))
                                               ).prefetch(buffer_size=2000)
-wandb.finish()
 interpreter = tf.lite.Interpreter("model.tflite")
 
 REQUIRED_SIGNATURE = "serving_default"
@@ -781,16 +786,21 @@ output = prediction_fn(inputs=frame)
 
 scores = []
 
-for i, (frame, target, id_) in tqdm(enumerate(test_dataset.take(1000))):
-    print(target, id_)
+for i, (frame, target) in tqdm(enumerate(test_dataset)):
     output = prediction_fn(inputs=frame)
     prediction_str = "".join([rev_character_map.get(s, "")
                              for s in np.argmax(output[REQUIRED_OUTPUT], axis=1)])
     target = target.numpy().decode("utf-8")
     score = (len(target) - distance(prediction_str, target)) / len(target)
     scores.append(score)
+    valid_df.iloc[i, [2, 3, 4]] = [target, prediction_str, score]
     if i % 50 == 0:
         print(np.sum(scores) / len(scores))
+
+valid_df['fold'] = FOLD
+valid_df.to_csv(SAVE_DIR / "oof_df.csv", index=False)
+
+wandb.finish()
 
 scores = np.array(scores)
 print(np.sum(scores) / len(scores))
