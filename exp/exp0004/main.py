@@ -18,8 +18,8 @@ from sklearn.model_selection import KFold
 import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
-DEBUG = True
-WANDB = False
+DEBUG = False
+WANDB = True
 # ====================================================
 
 N_FOLDS = 4
@@ -575,8 +575,8 @@ if DEBUG:
     N_EPOCHS = 1
     N_WARMUP_EPOCHS = 0
 else:
-    N_EPOCHS = 50
-    N_WARMUP_EPOCHS = 10
+    N_EPOCHS = 15
+    N_WARMUP_EPOCHS = 2
 LR_MAX = 1e-3
 WD_RATIO = 0.05
 WARMUP_METHOD = "exp"
@@ -784,7 +784,6 @@ prediction_fn = interpreter.get_signature_runner(REQUIRED_SIGNATURE)
 # output = prediction_fn(inputs=frame)
 
 scores = []
-
 for i, (frame, target) in tqdm(enumerate(test_dataset)):
     output = prediction_fn(inputs=frame)
     prediction_str = "".join([rev_character_map.get(s, "")
