@@ -535,7 +535,7 @@ class CallbackEval(tf.keras.callbacks.Callback):
                 valid_accuracy=f"{valid_accuracy.avg:.4f}",
                 valid_norm_ld=f"{valid_norm_ld.avg:.4f}"
             )
-        print(valid_data_num)
+        # print(valid_data_num)
         wandb.log(
             {'epoch': epoch,
              'valid_accuracy': valid_accuracy.avg,
@@ -550,7 +550,8 @@ class CallbackEval(tf.keras.callbacks.Callback):
 
 
 # Callback function to check transcription on the val set.
-validation_callback = CallbackEval(val_dataset.take(1))
+validation_callback = CallbackEval(val_dataset)
+
 
 if DEBUG:
     N_EPOCHS = 2
