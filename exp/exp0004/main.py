@@ -19,6 +19,7 @@ import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = True
+WANDB = False
 # ====================================================
 
 N_FOLDS = 4
@@ -249,7 +250,8 @@ tffiles = [str(DATA_DIR / f"tfds/{file_id}.tfrecord")
            for file_id in df.file_id.unique()]
 
 # kfold
-wandb.init(project='kaggle-asl2', name=exp_name)
+wandb.init(project='kaggle-asl2', name=exp_name,
+           mode='online' if WANDB else 'disabled')
 kf = KFold(n_splits=N_FOLDS, shuffle=True, random_state=SEED).split(tffiles)
 for fold, (train_indices, valid_indices) in enumerate(kf):
     if fold == FOLD:
