@@ -757,13 +757,14 @@ def create_data_gen(file_ids, y_mul=1):
                 yield x, y
     return gen
 
+
 pqfiles = valid_pd_ids
 
 test_dataset = tf.data.Dataset.from_generator(create_data_gen(pqfiles, 0),
                                               output_signature=(tf.TensorSpec(shape=(None, len(
                                                   SEL_COLS)), dtype=tf.float32), tf.TensorSpec(shape=(), dtype=tf.string))
                                               ).prefetch(buffer_size=2000)
-interpreter = tf.lite.Interpreter("model.tflite")
+interpreter = tf.lite.Interpreter(str(SAVE_DIR / "model.tflite"))
 
 REQUIRED_SIGNATURE = "serving_default"
 REQUIRED_OUTPUT = "outputs"
