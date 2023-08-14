@@ -18,7 +18,7 @@ from sklearn.model_selection import KFold
 import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
-DEBUG = True
+DEBUG = False
 WANDB = False
 # ====================================================
 
