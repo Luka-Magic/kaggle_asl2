@@ -13,9 +13,12 @@ from Levenshtein import distance
 import zipfile
 from utils import AverageMeter, validation_metrics, seed_everything
 import wandb
+from sklearn.model_selection import KFold
 
 import warnings
 warnings.filterwarnings('ignore')
+
+SEED = 77
 
 EXP_PATH = Path.cwd()
 ROOT_DIR = EXP_PATH.parents[2]
@@ -32,7 +35,7 @@ wandb.login()
 wandb.init(project='kaggle-asl2', name=exp_name)
 
 # ====================================================
-DEBUG = True
+DEBUG = False
 # ====================================================
 
 pad_token = '^'
@@ -242,18 +245,28 @@ def pre_process_fn(lip, rhand, lhand, rpose, lpose, phrase):
 
 tffiles = [str(DATA_DIR / f"tfds/{file_id}.tfrecord")
            for file_id in df.file_id.unique()]
-val_len = 1  # int(0.05 * len(pqfiles))
+
+# kfold
+N_FOLDS = 4
+FOLD = 0
+kf = KFold(n_splits=N_FOLDS, shuffle=True, random_state=SEED).split(tffiles)
+for fold, (train_indices, valid_indices) in enumerate(kf):
+    if fold == FOLD:
+        break
+
 train_batch_size = 32
 val_batch_size = 32
 
 if DEBUG:
-    train_dataset = tf.data.TFRecordDataset(tffiles[1:2]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
+    train_dataset = tf.data.TFRecordDataset(tffiles[0:1]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(train_batch_size).prefetch(tf.data.AUTOTUNE)
+    val_dataset = tf.data.TFRecordDataset(tffiles[1:2]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
+        pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(val_batch_size).prefetch(tf.data.AUTOTUNE)
 else:
-    train_dataset = tf.data.TFRecordDataset(tffiles[val_len:]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
+    train_dataset = tf.data.TFRecordDataset(tffiles[train_indices]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(train_batch_size).prefetch(tf.data.AUTOTUNE)
-val_dataset = tf.data.TFRecordDataset(tffiles[:val_len]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
-    pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(val_batch_size).prefetch(tf.data.AUTOTUNE)
+    val_dataset = tf.data.TFRecordDataset(tffiles[valid_indices]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
+        pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(val_batch_size).prefetch(tf.data.AUTOTUNE)
 
 batch = next(iter(val_dataset))
 print(batch[0].shape, batch[1].shape)
