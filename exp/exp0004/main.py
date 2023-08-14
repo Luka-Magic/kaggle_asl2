@@ -24,7 +24,6 @@ WANDB = False
 
 N_FOLDS = 4
 FOLD = 0
-
 SEED = 77
 
 EXP_PATH = Path.cwd()
@@ -38,8 +37,9 @@ SAVE_DIR.mkdir(parents=True, exist_ok=True)
 with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
     char_to_num = json.load(f)
 
-wandb.login()
+seed_everything(SEED)
 
+wandb.login()
 
 pad_token = '^'
 pad_token_idx = 59
@@ -759,7 +759,6 @@ def create_data_gen(file_ids, y_mul=1):
 
 
 pqfiles = np.array(valid_pd_ids, dtype=np.int64)
-print('pqfiles: ', pqfiles)
 test_dataset = tf.data.Dataset.from_generator(create_data_gen(pqfiles, 0),
                                               output_signature=(tf.TensorSpec(shape=(None, len(
                                                   SEL_COLS)), dtype=tf.float32), tf.TensorSpec(shape=(), dtype=tf.string))
@@ -775,14 +774,14 @@ rev_character_map = {j: i for i, j in character_map.items()}
 
 prediction_fn = interpreter.get_signature_runner(REQUIRED_SIGNATURE)
 
-for frame, target in test_dataset.skip(100).take(10):
-    output = prediction_fn(inputs=frame)
-    prediction_str = "".join([rev_character_map.get(s, "")
-                             for s in np.argmax(output[REQUIRED_OUTPUT], axis=1)])
-    target = target.numpy().decode("utf-8")
-    print("pred =", prediction_str, "; target =", target)
+# for frame, target in test_dataset.skip(100).take(10):
+#     output = prediction_fn(inputs=frame)
+#     prediction_str = "".join([rev_character_map.get(s, "")
+#                              for s in np.argmax(output[REQUIRED_OUTPUT], axis=1)])
+#     target = target.numpy().decode("utf-8")
+#     print("pred =", prediction_str, "; target =", target)
 
-output = prediction_fn(inputs=frame)
+# output = prediction_fn(inputs=frame)
 
 scores = []
 
