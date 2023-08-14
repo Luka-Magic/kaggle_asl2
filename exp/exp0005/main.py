@@ -620,7 +620,7 @@ class CallbackEval(tf.keras.callbacks.Callback):
             print(f"Target / Predict: {targets[i]} / {predictions[i]}")
 
         update_flag = False
-        if valid_norm_ld.avg < self.best_norm_ld:
+        if valid_norm_ld.avg > self.best_norm_ld:
             self.best_norm_ld = valid_norm_ld.avg
             model.save_weights(SAVE_DIR / "best_model.h5")
             self.best_norm_ld_epoch = epoch
