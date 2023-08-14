@@ -27,6 +27,10 @@ SAVE_DIR.mkdir(parents=True, exist_ok=True)
 with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
     char_to_num = json.load(f)
 
+# ====================================================
+DEBUG = True
+# ====================================================
+
 pad_token = '^'
 pad_token_idx = 59
 
@@ -238,8 +242,12 @@ val_len = 1  # int(0.05 * len(pqfiles))
 train_batch_size = 32
 val_batch_size = 32
 
-train_dataset = tf.data.TFRecordDataset(tffiles[val_len:]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
-    pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(train_batch_size).prefetch(tf.data.AUTOTUNE)
+if DEBUG:
+    train_dataset = tf.data.TFRecordDataset(tffiles[1:3]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
+        pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(train_batch_size).prefetch(tf.data.AUTOTUNE)
+else:
+    train_dataset = tf.data.TFRecordDataset(tffiles[val_len:2]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
+        pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(train_batch_size).prefetch(tf.data.AUTOTUNE)
 val_dataset = tf.data.TFRecordDataset(tffiles[:val_len]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
     pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(val_batch_size).prefetch(tf.data.AUTOTUNE)
 
@@ -533,8 +541,12 @@ class CallbackEval(tf.keras.callbacks.Callback):
 # Callback function to check transcription on the val set.
 validation_callback = CallbackEval(val_dataset.take(1))
 
-N_EPOCHS = 1
-N_WARMUP_EPOCHS = 10
+if DEBUG:
+    N_EPOCHS = 1
+    N_WARMUP_EPOCHS = 0
+else:
+    N_EPOCHS = 50
+    N_WARMUP_EPOCHS = 10
 LR_MAX = 1e-3
 WD_RATIO = 0.05
 WARMUP_METHOD = "exp"
