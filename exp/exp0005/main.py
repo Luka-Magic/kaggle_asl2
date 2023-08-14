@@ -102,8 +102,11 @@ RPOSE_IDX_Z = [i for i, col in enumerate(
     SEL_COLS) if "pose" in col and int(col[-2:]) in RPOSE and "z" in col]
 LPOSE_IDX_Z = [i for i, col in enumerate(
     SEL_COLS) if "pose" in col and int(col[-2:]) in LPOSE and "z" in col]
+
 HAND_LINE_IDX = [[0, 1], [0, 5], [0, 17], [1, 2], [2, 3], [3, 4], [5, 6], [5, 9], [6, 7], [7, 8], [
     9, 10], [9, 13], [10, 11], [11, 12], [13, 14], [13, 17], [14, 15], [15, 16], [17, 18], [18, 19], [19, 20]]
+HAND_LINE_IDX_I = [HAND_LINE_IDX[i][0] for i in range(len(HAND_LINE_IDX))]
+HAND_LINE_IDX_J = [HAND_LINE_IDX[i][1] for i in range(len(HAND_LINE_IDX))]
 
 RHM = np.load(DATA_DIR / "mean_std/rh_mean.npy")
 LHM = np.load(DATA_DIR / "mean_std/lh_mean.npy")
@@ -165,6 +168,22 @@ def pre_process0(x):
     lpose_y = tf.gather(x, LPOSE_IDX_Y, axis=1)
     lpose_z = tf.gather(x, LPOSE_IDX_Z, axis=1)
 
+    rhand_diff_x_i = tf.gather(rhand_x, HAND_LINE_IDX_I, axis=1)
+    rhand_diff_x_j = tf.gather(rhand_x, HAND_LINE_IDX_J, axis=1)
+    rhand_diff_x = rhand_diff_x_j - rhand_diff_x_i
+
+    rhand_diff_y_i = tf.gather(rhand_y, HAND_LINE_IDX_I, axis=1)
+    rhand_diff_y_j = tf.gather(rhand_y, HAND_LINE_IDX_J, axis=1)
+    rhand_diff_y = rhand_diff_y_j - rhand_diff_y_i
+
+    lhand_diff_x_i = tf.gather(lhand_x, HAND_LINE_IDX_I, axis=1)
+    lhand_diff_x_j = tf.gather(lhand_x, HAND_LINE_IDX_J, axis=1)
+    lhand_diff_x = lhand_diff_x_j - lhand_diff_x_i
+
+    lhand_diff_y_i = tf.gather(lhand_y, HAND_LINE_IDX_I, axis=1)
+    lhand_diff_y_j = tf.gather(lhand_y, HAND_LINE_IDX_J, axis=1)
+    lhand_diff_y = lhand_diff_y_j - lhand_diff_y_i
+
     lip = tf.concat([lip_x[..., tf.newaxis], lip_y[...,
                     tf.newaxis], lip_z[..., tf.newaxis]], axis=-1)
     rhand = tf.concat([rhand_x[..., tf.newaxis], rhand_y[...,
@@ -175,6 +194,10 @@ def pre_process0(x):
                       tf.newaxis], rpose_z[..., tf.newaxis]], axis=-1)
     lpose = tf.concat([lpose_x[..., tf.newaxis], lpose_y[...,
                       tf.newaxis], lpose_z[..., tf.newaxis]], axis=-1)
+    hand_diff = tf.concat([rhand_diff_x[..., tf.newaxis],
+                           rhand_diff_y[..., tf.newaxis],
+                           lhand_diff_x[..., tf.newaxis],
+                           lhand_diff_y[..., tf.newaxis]], axis=-1)
 
     hand = tf.concat([rhand, lhand], axis=1)
     hand = tf.where(tf.math.is_nan(hand), 0.0, hand)
@@ -185,27 +208,28 @@ def pre_process0(x):
     lhand = lhand[mask]
     rpose = rpose[mask]
     lpose = lpose[mask]
+    hand_diff = hand_diff[mask]
 
-    return lip, rhand, lhand, rpose, lpose
+    return lip, rhand, lhand, rpose, lpose, hand_diff
 
 
 N_ADDITIONAL_FEATURES = 84
 
 
 @tf.function()
-def pre_process1(lip, rhand, lhand, rpose, lpose):
+def pre_process1(lip, rhand, lhand, rpose, lpose, hand_diff):
     # shape: (FRAME_LEN, n_landmarks, 3)
     # 追加特徴量用の空の配列を作成
-    y = tf.zeros((FRAME_LEN, N_ADDITIONAL_FEATURES))
 
     # 距離
     # l / r hand = *2
-    idx = 0
-    for axis in [0, 1]:  # *2
-        for i, j in HAND_LINE_IDX:  # *21
-            y[:, idx].assign(rhand[:, j, axis] - rhand[:, i, axis])
-            y[:, idx + 42].assign(lhand[:, j, axis] - lhand[:, i, axis])
-            idx += 1
+
+    # idx = 0
+    # for axis in [0, 1]:  # *2
+    #     for i, j in HAND_LINE_IDX:  # *21
+    #         y[:, idx].assign(rhand[:, j, axis] - rhand[:, i, axis])
+    #         y[:, idx + 42].assign(lhand[:, j, axis] - lhand[:, i, axis])
+    #         idx += 1
     # rhandの角度
     # rhandの速度
     # rhandの加速度
@@ -220,6 +244,7 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
 
     x = tf.concat([lip, rhand, lhand, rpose, lpose], axis=1)
     x = x[:, :, :2]  # x, yだけ使う
+    x = tf.concat([x, hand_diff], axis=1)
     s = tf.shape(x)
     x = tf.reshape(x, (s[0], s[1]*s[2]))
     x = tf.concat([x, y], axis=1)
