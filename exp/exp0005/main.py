@@ -200,12 +200,12 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
 
     # 距離
     # l / r hand = *2
+    idx = 0
     for axis in [0, 1]:  # *2
-        for i, j in HAND_LINE_IDX:  # *21
-            y[:, i] = tf.linalg.norm(
-                rhand[:, i, axis] - rhand[:, j, axis], axis=1)
-            y[:, i + 42] = tf.linalg.norm(
-                lhand[:, i, axis] - lhand[:, j, axis], axis=1)
+        for x_i, y_i in HAND_LINE_IDX:  # *21
+            y[:, idx] = rhand[:, x_i, axis] - rhand[:, y_i, axis]
+            y[:, idx + 42] = lhand[:, x_i, axis] - lhand[:, y_i, axis]
+            idx += 1
     # rhandの角度
     # rhandの速度
     # rhandの加速度
@@ -231,6 +231,7 @@ pre0 = pre_process0(frames)
 pre1 = pre_process1(*pre0)
 INPUT_SHAPE = list(pre1.shape)
 print(INPUT_SHAPE)
+print(pre1)
 
 
 def decode_fn(record_bytes):
