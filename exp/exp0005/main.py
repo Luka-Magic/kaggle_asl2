@@ -584,7 +584,7 @@ class CallbackEval(tf.keras.callbacks.Callback):
             self.start_epoch = 0
 
     def on_epoch_end(self, epoch: int, logs=None):
-        epoch += self.start_epoch
+        epoch = epoch + self.start_epoch + 1
 
         model.save_weights(SAVE_DIR / "model.h5")
         valid_accuracy = AverageMeter()
@@ -616,7 +616,7 @@ class CallbackEval(tf.keras.callbacks.Callback):
                 valid_norm_ld=f"{valid_norm_ld.avg:.4f}"
             )
         for i in range(16):
-            print(f"Target / Predict: {targets[i]} / {predictions[i]}")
+            print(f"Target || Predict: {targets[i]} || {predictions[i]}")
 
         update_flag = False
         if valid_norm_ld.avg > self.best_norm_ld:
@@ -646,47 +646,6 @@ def lrfn(current_step, num_warmup_steps, lr_max, num_cycles=0.50, num_training_s
             float(max(1, num_training_steps - num_warmup_steps))
 
         return max(0.0, 0.5 * (1.0 + math.cos(math.pi * float(num_cycles) * 2.0 * progress))) * lr_max
-
-
-def plot_lr_schedule(lr_schedule, epochs):
-    fig = plt.figure(figsize=(20, 10))
-    plt.plot([None] + lr_schedule + [None])
-    # X Labels
-    x = np.arange(1, epochs + 1)
-    x_axis_labels = [i if epochs <= 40 or i %
-                     5 == 0 or i == 1 else None for i in range(1, epochs + 1)]
-    plt.xlim([1, epochs])
-    # set tick step to 1 and let x axis start at 1
-    plt.xticks(x, x_axis_labels)
-
-    # Increase y-limit for better readability
-    plt.ylim([0, max(lr_schedule) * 1.1])
-
-    # Title
-    schedule_info = f'start: {lr_schedule[0]:.1E}, max: {max(lr_schedule):.1E}, final: {lr_schedule[-1]:.1E}'
-    plt.title(f'Step Learning Rate Schedule, {schedule_info}', size=18, pad=12)
-
-    # Plot Learning Rates
-    for x, val in enumerate(lr_schedule):
-        if epochs <= 40 or x % 5 == 0 or x is epochs - 1:
-            if x < len(lr_schedule) - 1:
-                if lr_schedule[x - 1] < val:
-                    ha = 'right'
-                else:
-                    ha = 'left'
-            elif x == 0:
-                ha = 'right'
-            else:
-                ha = 'left'
-            plt.plot(x + 1, val, 'o', color='black')
-            offset_y = (max(lr_schedule) - min(lr_schedule)) * 0.02
-            plt.annotate(f'{val:.1E}', xy=(
-                x + 1, val + offset_y), size=12, ha=ha)
-
-    plt.xlabel('Epoch', size=16, labelpad=5)
-    plt.ylabel('Learning Rate', size=16, labelpad=5)
-    plt.grid()
-    plt.show()
 
 
 class WeightDecayCallback(tf.keras.callbacks.Callback):

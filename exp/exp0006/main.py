@@ -29,6 +29,16 @@ N_FOLDS = 4
 FOLD = 0
 SEED = 77
 
+if DEBUG:
+    N_EPOCHS = 2
+    N_WARMUP_EPOCHS = 0
+else:
+    N_EPOCHS = 50
+    N_WARMUP_EPOCHS = 10
+LR_MAX = 1e-3
+WD_RATIO = 0.05
+WARMUP_METHOD = "exp"
+
 EXP_PATH = Path.cwd()
 ROOT_DIR = EXP_PATH.parents[2]
 exp_name = EXP_PATH.name
@@ -676,17 +686,6 @@ def decode_batch_predictions(pred):
 # A callback class to output a few transcriptions during training
 
 
-if DEBUG:
-    N_EPOCHS = 2
-    N_WARMUP_EPOCHS = 0
-else:
-    N_EPOCHS = 50
-    N_WARMUP_EPOCHS = 10
-LR_MAX = 1e-3
-WD_RATIO = 0.05
-WARMUP_METHOD = "exp"
-
-
 class CallbackEval(tf.keras.callbacks.Callback):
     """Displays a batch of outputs after every epoch."""
 
@@ -701,6 +700,9 @@ class CallbackEval(tf.keras.callbacks.Callback):
             self.best_norm_ld = -1e9
             self.best_norm_ld_epoch = 0
             self.start_epoch = 0
+        self.valid_result_df = None
+        if RESTART and (SAVE_DIR / "valid_result.csv").exists():
+            self.valid_result_df = pd.read_csv(SAVE_DIR / "valid_result.csv")
 
     def on_epoch_end(self, epoch: int, logs=None):
         epoch = epoch + self.start_epoch + 1
@@ -734,8 +736,13 @@ class CallbackEval(tf.keras.callbacks.Callback):
                 valid_accuracy=f"{valid_accuracy.avg:.4f}",
                 valid_norm_ld=f"{valid_norm_ld.avg:.4f}"
             )
-        for i in range(16):
-            print(f"Target || Predict: {targets[i]} || {predictions[i]}")
+        # for i in range(16):
+        #     print(f"Target / Predict: {targets[i]} / {predictions[i]}")
+
+        if self.valid_result_df is None:
+            self.valid_result_df = pd.DataFrame(targets, columns=["target"])
+        self.valid_result_df[f"pred_epoch{epoch}"] = predictions
+        self.valid_result_df.to_csv(SAVE_DIR / "valid_result.csv", index=False)
 
         update_flag = False
         if valid_norm_ld.avg > self.best_norm_ld:
@@ -791,13 +798,15 @@ if RESTART:
 
     # Learning rate for encoder
     LR_SCHEDULE = [lrfn(step, num_warmup_steps=N_WARMUP_EPOCHS,
-                        lr_max=LR_MAX, num_cycles=0.50) for step in range(N_EPOCHS)][restart_epoch:]
-    lr_callback = tf.keras.callbacks.LearningRateScheduler(
-        lambda step: LR_SCHEDULE[step], verbose=0)
+                        lr_max=LR_MAX, num_cycles=0.50) for step in range(N_EPOCHS)][best_epoch:]
 else:
     training_epochs = N_EPOCHS
     validation_callback = CallbackEval(val_dataset)
+    LR_SCHEDULE = [lrfn(step, num_warmup_steps=N_WARMUP_EPOCHS,
+                        lr_max=LR_MAX, num_cycles=0.50) for step in range(N_EPOCHS)]
 
+lr_callback = tf.keras.callbacks.LearningRateScheduler(
+    lambda step: LR_SCHEDULE[step], verbose=0)
 history = model.fit(
     train_dataset,
     validation_data=val_dataset,

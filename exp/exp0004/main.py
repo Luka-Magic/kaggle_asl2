@@ -546,7 +546,7 @@ class CallbackEval(tf.keras.callbacks.Callback):
             self.start_epoch = 0
 
     def on_epoch_end(self, epoch: int, logs=None):
-        epoch += self.start_epoch
+        epoch = epoch + self.start_epoch + 1
 
         model.save_weights(SAVE_DIR / "model.h5")
         valid_accuracy = AverageMeter()
