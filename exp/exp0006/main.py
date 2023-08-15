@@ -12,14 +12,17 @@ import tensorflow_addons as tfa
 from Levenshtein import distance
 import zipfile
 from utils import AverageMeter, validation_metrics, seed_everything
-import wandb
 from sklearn.model_selection import KFold
 
 import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
-WANDB = True
+RESTART = True
+best_epoch = 11
+best_score = 0.7546
+
+restart_epoch = best_epoch + 1
 # ====================================================
 
 N_FOLDS = 4
@@ -38,8 +41,6 @@ with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
     char_to_num = json.load(f)
 
 seed_everything(SEED)
-
-wandb.login()
 
 pad_token = '^'
 pad_token_idx = 59
@@ -105,6 +106,10 @@ LPOSE_IDX_Z = [i for i, col in enumerate(
 
 HAND_LINE_IDX = [[0, 1], [0, 5], [0, 17], [1, 2], [2, 3], [3, 4], [5, 6], [5, 9], [6, 7], [7, 8], [
     9, 10], [9, 13], [10, 11], [11, 12], [13, 14], [13, 17], [14, 15], [15, 16], [17, 18], [18, 19], [19, 20]]
+HAND_LINE_ADD_IDX = [[2, 4], [2, 8], [2, 12], [2, 16],
+                     [2, 20], [4, 8], [8, 12], [12, 16], [16, 20]]
+
+HAND_LINE_IDX += HAND_LINE_ADD_IDX
 HAND_LINE_IDX_I = [HAND_LINE_IDX[i][0] for i in range(len(HAND_LINE_IDX))]
 HAND_LINE_IDX_J = [HAND_LINE_IDX[i][1] for i in range(len(HAND_LINE_IDX))]
 
@@ -113,6 +118,11 @@ LHM = np.load(DATA_DIR / "mean_std/lh_mean.npy")
 RPM = np.load(DATA_DIR / "mean_std/rp_mean.npy")
 LPM = np.load(DATA_DIR / "mean_std/lp_mean.npy")
 LIPM = np.load(DATA_DIR / "mean_std/lip_mean.npy")
+
+RHM_HFLIP = RHM * [-1, 1, 1]
+LHM_HFLIP = LHM * [-1, 1, 1]
+RPM_HFLIP = RPM * [-1, 1, 1]
+LPM_HFLIP = LPM * [-1, 1, 1]
 
 RHS = np.load(DATA_DIR / "mean_std/rh_std.npy")
 LHS = np.load(DATA_DIR / "mean_std/lh_std.npy")
@@ -198,64 +208,75 @@ def pre_process0(x):
 
 @tf.function()
 def pre_process1(lip, rhand, lhand, rpose, lpose):
+    n_nan_rhand = tf.reduce_sum(
+        tf.cast(tf.math.equal(rhand, 0.0), tf.int32), axis=[1, 2])
+    n_nan_lhand = tf.reduce_sum(
+        tf.cast(tf.math.equal(lhand, 0.0), tf.int32), axis=[1, 2])
+
+    def invert_x(x):
+        x, y, z = tf.unstack(x, axis=-1)
+        x = 1-x
+        return tf.stack([x, y, z], -1)
+
+    if n_nan_rhand > n_nan_lhand:
+        lip = invert_x(lip)
+        rhand = invert_x(lhand)
+        lhand = invert_x(rhand)
+        rpose = invert_x(lpose)
+        lpose = invert_x(rpose)
+
     # shape: (FRAME_LEN, n_landmarks, 3)
     # 距離
     rhand_diff_i = tf.gather(rhand, HAND_LINE_IDX_I, axis=1)
     rhand_diff_j = tf.gather(rhand, HAND_LINE_IDX_J, axis=1)
     rhand_diff = rhand_diff_j - rhand_diff_i  # shape: (FRAME_LEN, 21, 3)
-    lhand_diff_i = tf.gather(lhand, HAND_LINE_IDX_I, axis=1)
-    lhand_diff_j = tf.gather(lhand, HAND_LINE_IDX_J, axis=1)
-    lhand_diff = lhand_diff_j - lhand_diff_i  # shape: (FRAME_LEN, 21, 3)
 
     rhand_dist = tf.math.sqrt(tf.math.square(
         rhand_diff[:, :, 0]) + tf.math.square(rhand_diff[:, :, 1]))[..., tf.newaxis]
-    lhand_dist = tf.math.sqrt(tf.math.square(
-        lhand_diff[:, :, 0]) + tf.math.square(rhand_diff[:, :, 1]))[..., tf.newaxis]
     # handの角度
     rhand_sin = rhand_diff[:, :, 1] / (rhand_dist[:, :, 0] + 1e-8)
     rhand_cos = rhand_diff[:, :, 0] / (rhand_dist[:, :, 0] + 1e-8)
     rhand_angle = tf.math.atan2(rhand_sin, rhand_cos)[..., tf.newaxis]
-    lhand_sin = lhand_diff[:, :, 1] / (lhand_dist[:, :, 0] + 1e-8)
-    lhand_cos = lhand_diff[:, :, 0] / (lhand_dist[:, :, 0] + 1e-8)
-    lhand_angle = tf.math.atan2(lhand_sin, lhand_cos)[..., tf.newaxis]
     # rhandの速度
     rhand_v = rhand[1:] - rhand[:-1]
     rhand_v = tf.pad(rhand_v, ([[1, 0], [0, 0]]),
-                     constant_values=float("NaN"))
-    lhand_v = lhand[1:] - lhand[:-1]
-    lhand_v = tf.pad(lhand_v, ([[1, 0], [0, 0]]),
                      constant_values=float("NaN"))
     # rhandの加速度
     rhand_a = rhand_v[1:] - rhand_v[:-1]
     rhand_a = tf.pad(rhand_a, ([[2, 0], [0, 0]]),
                      constant_values=float("NaN"))
-    lhand_a = lhand_v[1:] - lhand_v[:-1]
-    lhand_a = tf.pad(lhand_a, ([[2, 0], [0, 0]]),
-                     constant_values=float("NaN"))
     # rhandの角速度
     rhand_w = rhand_angle[1:] - rhand_angle[:-1]
     rhand_w = tf.pad(rhand_w, ([[1, 0], [0, 0]]),
                      constant_values=float("NaN"))
-    lhand_w = lhand_angle[1:] - lhand_angle[:-1]
-    lhand_w = tf.pad(lhand_w, ([[1, 0], [0, 0]]),
-                     constant_values=float("NaN"))
 
+    # 反転
+    if n_nan_rhand > n_nan_lhand:
+        rhand = (resize_pad(rhand) - LHM_HFLIP) / LHS
+        rpose = (resize_pad(rpose) - LPM_HFLIP) / LPS
+        lpose = (resize_pad(lpose) - RPM_HFLIP) / RPS
+    else:
+        rhand = (resize_pad(rhand) - RHM) / RHS
+        rpose = (resize_pad(rpose) - RPM) / RPS
+        lpose = (resize_pad(lpose) - LPM) / LPS
     lip = (resize_pad(lip) - LIPM) / LIPS
-    rhand = (resize_pad(rhand) - RHM) / RHS
-    lhand = (resize_pad(lhand) - LHM) / LHS
-    rpose = (resize_pad(rpose) - RPM) / RPS
-    lpose = (resize_pad(lpose) - LPM) / LPS
-    rhand_diff = resize_pad(rhand_diff)
-    lhand_diff = resize_pad(lhand_diff)
-    rhand_dist = resize_pad(rhand_dist)[:, :, 0]
-    lhand_dist = resize_pad(lhand_dist)[:, :, 0]
 
-    x = tf.concat([lip, rhand, lhand, rpose, lpose,
-                  rhand_diff, lhand_diff], axis=1)
+    rhand_v = resize_pad(rhand_v)
+    # lhand_v = resize_pad(lhand_v)
+    rhand_a = resize_pad(rhand_a)
+    # lhand_a = resize_pad(lhand_a)
+    rhand_dist = resize_pad(rhand_dist)[:, :, 0]
+    # lhand_dist = resize_pad(lhand_dist)[:, :, 0]
+    rhand_angle = resize_pad(rhand_angle)[:, :, 0]
+    # lhand_angle = resize_pad(lhand_angle)[:, :, 0]
+    rhand_w = resize_pad(rhand_w)[:, :, 0]
+    # lhand_w = resize_pad(lhand_w)[:, :, 0]
+
+    x = tf.concat([lip, rhand, lhand, rpose, lpose, rhand_v, rhand_a], axis=1)
     x = x[:, :, :2]  # x, yだけ使う
     s = tf.shape(x)
     x = tf.reshape(x, (s[0], s[1]*s[2]))
-    x = tf.concat([x, rhand_dist, lhand_dist], axis=1)
+    x = tf.concat([x, rhand_dist, rhand_angle, rhand_w], axis=1)
     x = tf.where(tf.math.is_nan(x), 0.0, x)
     return x
 
@@ -296,11 +317,6 @@ def pre_process_fn(lip, rhand, lhand, rpose, lpose, phrase):
 tffiles = [str(DATA_DIR / f"tfds/{file_id}.tfrecord")
            for file_id in df.file_id.unique()]
 
-# kfold
-wandb.init(project='kaggle-asl2', name=exp_name,
-           mode='online' if WANDB else 'disabled')
-wandb_config = wandb.config
-wandb_config.fold = FOLD
 
 kf = KFold(n_splits=N_FOLDS, shuffle=True, random_state=SEED).split(tffiles)
 for fold, (train_indices, valid_indices) in enumerate(kf):
@@ -580,14 +596,35 @@ def decode_batch_predictions(pred):
 # A callback class to output a few transcriptions during training
 
 
+if DEBUG:
+    N_EPOCHS = 2
+    N_WARMUP_EPOCHS = 0
+else:
+    N_EPOCHS = 50
+    N_WARMUP_EPOCHS = 10
+LR_MAX = 1e-3
+WD_RATIO = 0.05
+WARMUP_METHOD = "exp"
+
+
 class CallbackEval(tf.keras.callbacks.Callback):
     """Displays a batch of outputs after every epoch."""
 
-    def __init__(self, dataset):
+    def __init__(self, dataset, restart_info=None):
         super().__init__()
         self.dataset = dataset
+        if restart_info is not None:
+            self.best_norm_ld = restart_info["best_norm_ld"]
+            self.best_norm_ld_epoch = restart_info["best_norm_ld_epoch"]
+            self.start_epoch = restart_info["best_norm_ld_epoch"] + 1
+        else:
+            self.best_norm_ld = -1e9
+            self.best_norm_ld_epoch = 0
+            self.start_epoch = 0
 
     def on_epoch_end(self, epoch: int, logs=None):
+        epoch = epoch + self.start_epoch + 1
+
         model.save_weights(SAVE_DIR / "model.h5")
         valid_accuracy = AverageMeter()
         valid_norm_ld = AverageMeter()
@@ -602,41 +639,38 @@ class CallbackEval(tf.keras.callbacks.Callback):
             valid_data_num += bs
             batch_predictions = model(X)
             batch_predictions = decode_batch_predictions(batch_predictions)
-            # predictions.extend(batch_predictions)
+            batch_targets = []
             for label in y:
                 label = "".join(num_to_char_fn(label.numpy())
                                 ).replace(pad_token, '')
-                targets.append(label)
-            accuracy, norm_ld = validation_metrics(batch_predictions, label)
+                batch_targets.append(label)
+            predictions.extend(batch_predictions)
+            targets.extend(batch_targets)
+            accuracy, norm_ld = validation_metrics(
+                batch_predictions, batch_targets)
             valid_accuracy.update(accuracy, n=bs)
             valid_norm_ld.update(norm_ld, n=bs)
             pbar.set_postfix(
                 valid_accuracy=f"{valid_accuracy.avg:.4f}",
                 valid_norm_ld=f"{valid_norm_ld.avg:.4f}"
             )
-        # print(valid_data_num)
-        wandb.log(
-            {'epoch': epoch,
-             'valid_accuracy': valid_accuracy.avg,
-             'valid_norm_ld': valid_norm_ld.avg}
-        )
         for i in range(16):
-            print(f"Target / Predict: {targets[i]} / {predictions[i]}")
+            print(f"Target || Predict: {targets[i]} || {predictions[i]}")
 
-
-# Callback function to check transcription on the val set.
-validation_callback = CallbackEval(val_dataset)
-
-
-if DEBUG:
-    N_EPOCHS = 1
-    N_WARMUP_EPOCHS = 0
-else:
-    N_EPOCHS = 50
-    N_WARMUP_EPOCHS = 10
-LR_MAX = 1e-3
-WD_RATIO = 0.05
-WARMUP_METHOD = "exp"
+        update_flag = False
+        if valid_norm_ld.avg > self.best_norm_ld:
+            self.best_norm_ld = valid_norm_ld.avg
+            model.save_weights(SAVE_DIR / "best_model.h5")
+            self.best_norm_ld_epoch = epoch
+            update_flag = True
+        print('-*-' * 30)
+        print(f'【EPOCH {epoch}/{N_EPOCHS}】')
+        print(f'    valid_accuracy: {valid_accuracy.avg:.4f}')
+        print(
+            f'    valid_norm_ld: {valid_norm_ld.avg:.4f}{"*" if update_flag else ""}')
+        print(
+            f'    best_norm_ld: {self.best_norm_ld:.4f} (epoch {self.best_norm_ld_epoch})')
+        print('-*-' * 30)
 
 
 def lrfn(current_step, num_warmup_steps, lr_max, num_cycles=0.50, num_training_steps=N_EPOCHS):
@@ -653,59 +687,6 @@ def lrfn(current_step, num_warmup_steps, lr_max, num_cycles=0.50, num_training_s
         return max(0.0, 0.5 * (1.0 + math.cos(math.pi * float(num_cycles) * 2.0 * progress))) * lr_max
 
 
-def plot_lr_schedule(lr_schedule, epochs):
-    fig = plt.figure(figsize=(20, 10))
-    plt.plot([None] + lr_schedule + [None])
-    # X Labels
-    x = np.arange(1, epochs + 1)
-    x_axis_labels = [i if epochs <= 40 or i %
-                     5 == 0 or i == 1 else None for i in range(1, epochs + 1)]
-    plt.xlim([1, epochs])
-    # set tick step to 1 and let x axis start at 1
-    plt.xticks(x, x_axis_labels)
-
-    # Increase y-limit for better readability
-    plt.ylim([0, max(lr_schedule) * 1.1])
-
-    # Title
-    schedule_info = f'start: {lr_schedule[0]:.1E}, max: {max(lr_schedule):.1E}, final: {lr_schedule[-1]:.1E}'
-    plt.title(f'Step Learning Rate Schedule, {schedule_info}', size=18, pad=12)
-
-    # Plot Learning Rates
-    for x, val in enumerate(lr_schedule):
-        if epochs <= 40 or x % 5 == 0 or x is epochs - 1:
-            if x < len(lr_schedule) - 1:
-                if lr_schedule[x - 1] < val:
-                    ha = 'right'
-                else:
-                    ha = 'left'
-            elif x == 0:
-                ha = 'right'
-            else:
-                ha = 'left'
-            plt.plot(x + 1, val, 'o', color='black')
-            offset_y = (max(lr_schedule) - min(lr_schedule)) * 0.02
-            plt.annotate(f'{val:.1E}', xy=(
-                x + 1, val + offset_y), size=12, ha=ha)
-
-    plt.xlabel('Epoch', size=16, labelpad=5)
-    plt.ylabel('Learning Rate', size=16, labelpad=5)
-    plt.grid()
-    plt.show()
-
-
-# Learning rate for encoder
-LR_SCHEDULE = [lrfn(step, num_warmup_steps=N_WARMUP_EPOCHS,
-                    lr_max=LR_MAX, num_cycles=0.50) for step in range(N_EPOCHS)]
-# Plot Learning Rate Schedule
-# plot_lr_schedule(LR_SCHEDULE, epochs=N_EPOCHS)
-# Learning Rate Callback
-lr_callback = tf.keras.callbacks.LearningRateScheduler(
-    lambda step: LR_SCHEDULE[step], verbose=0)
-
-# Custom callback to update weight decay with learning rate
-
-
 class WeightDecayCallback(tf.keras.callbacks.Callback):
     def __init__(self, wd_ratio=WD_RATIO):
         self.step_counter = 0
@@ -717,16 +698,39 @@ class WeightDecayCallback(tf.keras.callbacks.Callback):
             f'learning rate: {model.optimizer.learning_rate.numpy():.2e}, weight decay: {model.optimizer.weight_decay.numpy():.2e}')
 
 
+if RESTART:
+    restart_info = {
+        'best_norm_ld': best_score,
+        'best_norm_ld_epoch': best_epoch,
+    }
+    # load best model
+    model.load_weights(SAVE_DIR / "best_model.h5")
+    training_epochs = N_EPOCHS - restart_epoch + 1
+
+    validation_callback = CallbackEval(val_dataset, restart_info)
+
+    # Learning rate for encoder
+    LR_SCHEDULE = [lrfn(step, num_warmup_steps=N_WARMUP_EPOCHS,
+                        lr_max=LR_MAX, num_cycles=0.50) for step in range(N_EPOCHS)][restart_epoch:]
+    lr_callback = tf.keras.callbacks.LearningRateScheduler(
+        lambda step: LR_SCHEDULE[step], verbose=0)
+else:
+    training_epochs = N_EPOCHS
+    validation_callback = CallbackEval(val_dataset)
+
 history = model.fit(
     train_dataset,
     validation_data=val_dataset,
-    epochs=N_EPOCHS,
+    epochs=training_epochs,
     callbacks=[
         validation_callback,
         lr_callback,
         WeightDecayCallback(),
     ]
 )
+
+# load best model
+model.load_weights(SAVE_DIR / "best_model.h5")
 
 
 class TFLiteModel(tf.Module):
@@ -831,15 +835,6 @@ rev_character_map = {j: i for i, j in character_map.items()}
 
 prediction_fn = interpreter.get_signature_runner(REQUIRED_SIGNATURE)
 
-# for frame, target in test_dataset.skip(100).take(10):
-#     output = prediction_fn(inputs=frame)
-#     prediction_str = "".join([rev_character_map.get(s, "")
-#                              for s in np.argmax(output[REQUIRED_OUTPUT], axis=1)])
-#     target = target.numpy().decode("utf-8")
-#     print("pred =", prediction_str, "; target =", target)
-
-# output = prediction_fn(inputs=frame)
-
 scores = []
 for i, (frame, target) in tqdm(enumerate(test_dataset)):
     output = prediction_fn(inputs=frame)
@@ -854,8 +849,6 @@ for i, (frame, target) in tqdm(enumerate(test_dataset)):
 
 valid_df['fold'] = FOLD
 valid_df.to_csv(SAVE_DIR / "oof_df.csv", index=False)
-
-wandb.finish()
 
 scores = np.array(scores)
 print(np.sum(scores) / len(scores))

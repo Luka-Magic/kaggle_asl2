@@ -19,8 +19,8 @@ warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
 RESTART = True
-best_epoch = 11
-best_score = 0.7546
+best_epoch = 29
+best_score = 0.8600
 
 restart_epoch = best_epoch + 1
 # ====================================================
@@ -836,15 +836,6 @@ with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
 rev_character_map = {j: i for i, j in character_map.items()}
 
 prediction_fn = interpreter.get_signature_runner(REQUIRED_SIGNATURE)
-
-# for frame, target in test_dataset.skip(100).take(10):
-#     output = prediction_fn(inputs=frame)
-#     prediction_str = "".join([rev_character_map.get(s, "")
-#                              for s in np.argmax(output[REQUIRED_OUTPUT], axis=1)])
-#     target = target.numpy().decode("utf-8")
-#     print("pred =", prediction_str, "; target =", target)
-
-# output = prediction_fn(inputs=frame)
 
 scores = []
 for i, (frame, target) in tqdm(enumerate(test_dataset)):
