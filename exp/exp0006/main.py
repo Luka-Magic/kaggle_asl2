@@ -338,6 +338,11 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
         rpose, rpose_dist, rpose_angle, rpose_v_dist, rpose_v_angle, rpose_a, rpose_w,
         lpose, lpose_dist, lpose_angle, lpose_v_dist, lpose_v_angle, lpose_a, lpose_w
     ]
+
+    print([d.shape for d in datas])
+    print([len(tf.shape(d)) for d in datas])
+    print([len(mean.shape) for mean in MEAN_LIST])
+
     for i in range(len(datas)):
         if len(datas[i].shape) == 3:
             datas[i] = resize_pad(datas[i])
