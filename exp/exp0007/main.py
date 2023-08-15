@@ -33,8 +33,8 @@ if DEBUG:
     N_EPOCHS = 2
     N_WARMUP_EPOCHS = 0
 else:
-    N_EPOCHS = 25
-    N_WARMUP_EPOCHS = 5
+    N_EPOCHS = 20
+    N_WARMUP_EPOCHS = 4
 LR_MAX = 5e-3
 WD_RATIO = 0.05
 WARMUP_METHOD = "exp"
@@ -675,12 +675,14 @@ if RESTART:
     # Learning rate for encoder
     LR_SCHEDULE = [lrfn(step, num_warmup_steps=N_WARMUP_EPOCHS,
                         lr_max=LR_MAX, num_cycles=0.50) for step in range(N_EPOCHS)][best_epoch:]
-    lr_callback = tf.keras.callbacks.LearningRateScheduler(
-        lambda step: LR_SCHEDULE[step], verbose=0)
 else:
     training_epochs = N_EPOCHS
     validation_callback = CallbackEval(val_dataset)
+    LR_SCHEDULE = [lrfn(step, num_warmup_steps=N_WARMUP_EPOCHS,
+                        lr_max=LR_MAX, num_cycles=0.50) for step in range(N_EPOCHS)]
 
+lr_callback = tf.keras.callbacks.LearningRateScheduler(
+    lambda step: LR_SCHEDULE[step], verbose=0)
 history = model.fit(
     train_dataset,
     validation_data=val_dataset,
