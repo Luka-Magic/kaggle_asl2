@@ -62,6 +62,3 @@ def validation_metrics(preds, targets):
     norm_ld = sum_norm_ld / bs
     acc = sum_acc / bs
     return acc, norm_ld
-
-
-score = (len(target) - distance(prediction_str, target)) / len(target)
