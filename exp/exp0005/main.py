@@ -20,6 +20,9 @@ warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
 WANDB = False
+RESTART = True
+restart_epoch = 11
+best_score = 0.7546
 # ====================================================
 
 N_FOLDS = 4
@@ -575,13 +578,21 @@ WARMUP_METHOD = "exp"
 class CallbackEval(tf.keras.callbacks.Callback):
     """Displays a batch of outputs after every epoch."""
 
-    def __init__(self, dataset):
+    def __init__(self, dataset, restart_info=None):
         super().__init__()
         self.dataset = dataset
-        self.best_norm_ld = -1 * float('inf')
-        self.best_norm_ld_epoch = 0
+        if restart_info is not None:
+            self.best_norm_ld = restart_info["best_norm_ld"]
+            self.best_norm_ld_epoch = restart_info["best_norm_ld_epoch"]
+            self.start_epoch = restart_info["best_norm_ld_epoch"] + 1
+        else:
+            self.best_norm_ld = -1e9
+            self.best_norm_ld_epoch = 0
+            self.start_epoch = 0
 
     def on_epoch_end(self, epoch: int, logs=None):
+        epoch += self.start_epoch
+
         model.save_weights(SAVE_DIR / "model.h5")
         valid_accuracy = AverageMeter()
         valid_norm_ld = AverageMeter()
@@ -633,10 +644,6 @@ class CallbackEval(tf.keras.callbacks.Callback):
         print(
             f'    best_norm_ld: {self.best_norm_ld:.4f} (epoch {self.best_norm_ld_epoch})')
         print('-*-' * 30)
-
-
-# Callback function to check transcription on the val set.
-validation_callback = CallbackEval(val_dataset)
 
 
 def lrfn(current_step, num_warmup_steps, lr_max, num_cycles=0.50, num_training_steps=N_EPOCHS):
@@ -700,10 +707,9 @@ LR_SCHEDULE = [lrfn(step, num_warmup_steps=N_WARMUP_EPOCHS,
 # Plot Learning Rate Schedule
 # plot_lr_schedule(LR_SCHEDULE, epochs=N_EPOCHS)
 # Learning Rate Callback
+
 lr_callback = tf.keras.callbacks.LearningRateScheduler(
     lambda step: LR_SCHEDULE[step], verbose=0)
-
-# Custom callback to update weight decay with learning rate
 
 
 class WeightDecayCallback(tf.keras.callbacks.Callback):
@@ -717,10 +723,25 @@ class WeightDecayCallback(tf.keras.callbacks.Callback):
             f'learning rate: {model.optimizer.learning_rate.numpy():.2e}, weight decay: {model.optimizer.weight_decay.numpy():.2e}')
 
 
+if RESTART:
+    restart_info = {
+        'best_norm_ld': best_score,
+        'best_norm_ld_epoch': restart_epoch,
+    }
+    # load best model
+    model.load_weights(SAVE_DIR / "best_model.h5")
+    training_epochs = N_EPOCHS - restart_epoch
+    for _ in range(restart_epoch):
+        next(lr_callback)
+    validation_callback = CallbackEval(val_dataset, restart_info)
+else:
+    training_epochs = N_EPOCHS
+    validation_callback = CallbackEval(val_dataset)
+
 history = model.fit(
     train_dataset,
     validation_data=val_dataset,
-    epochs=N_EPOCHS,
+    epochs=training_epochs,
     callbacks=[
         validation_callback,
         lr_callback,
@@ -728,7 +749,7 @@ history = model.fit(
     ]
 )
 
-# load best model
+
 model.load_weights(SAVE_DIR / "best_model.h5")
 
 
