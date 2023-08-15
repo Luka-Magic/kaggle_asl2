@@ -339,7 +339,11 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
         lpose, lpose_dist, lpose_angle, lpose_v_dist, lpose_v_angle, lpose_a, lpose_w
     ]
     for i in range(len(datas)):
-        datas[i] = (resize_pad(datas[i]) - MEAN_LIST[i]) / STD_LIST[i]
+        if len(datas[i].shape) == 3:
+            datas[i] = resize_pad(datas[i])
+        elif len(datas[i].shape) == 2:
+            datas[i] = resize_pad(datas[i][..., tf.newaxis])[:, :, 0]
+        datas[i] = (datas[i] - MEAN_LIST[i]) / STD_LIST[i]
 
     print([d.shape for d in datas])
 
