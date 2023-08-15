@@ -251,19 +251,19 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
     lpose_dist = tf.math.sqrt(tf.math.square(
         lpose_diff[:, :, 0]) + tf.math.square(lpose_diff[:, :, 1]))
     # 角度
-    rhand_sin = rhand_diff[:, :, 1] / (rhand_dist[:, :, 0] + 1e-8)
-    rhand_cos = rhand_diff[:, :, 0] / (rhand_dist[:, :, 0] + 1e-8)
+    rhand_sin = rhand_diff[:, :, 1] / (rhand_dist + 1e-8)
+    rhand_cos = rhand_diff[:, :, 0] / (rhand_dist + 1e-8)
     rhand_angle = tf.math.atan2(rhand_sin, rhand_cos) / np.pi
 
-    lip_sin = lip_diff[:, :, 1] / (lip_dist[:, :, 0] + 1e-8)
-    lip_cos = lip_diff[:, :, 0] / (lip_dist[:, :, 0] + 1e-8)
+    lip_sin = lip_diff[:, :, 1] / (lip_dist + 1e-8)
+    lip_cos = lip_diff[:, :, 0] / (lip_dist + 1e-8)
     lip_angle = tf.math.atan2(lip_sin, lip_cos) / np.pi
 
-    rpose_sin = rpose_diff[:, :, 1] / (rpose_dist[:, :, 0] + 1e-8)
-    rpose_cos = rpose_diff[:, :, 0] / (rpose_dist[:, :, 0] + 1e-8)
+    rpose_sin = rpose_diff[:, :, 1] / (rpose_dist + 1e-8)
+    rpose_cos = rpose_diff[:, :, 0] / (rpose_dist + 1e-8)
     rpose_angle = tf.math.atan2(rpose_sin, rpose_cos) / np.pi
-    lpose_sin = lpose_diff[:, :, 1] / (lpose_dist[:, :, 0] + 1e-8)
-    lpose_cos = lpose_diff[:, :, 0] / (lpose_dist[:, :, 0] + 1e-8)
+    lpose_sin = lpose_diff[:, :, 1] / (lpose_dist + 1e-8)
+    lpose_cos = lpose_diff[:, :, 0] / (lpose_dist + 1e-8)
     lpose_angle = tf.math.atan2(lpose_sin, lpose_cos) / np.pi
 
     # 速度
@@ -272,8 +272,8 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
                      constant_values=float("NaN"))
     rhand_v_dist = tf.math.sqrt(tf.math.square(
         rhand_v[:, :, 0]) + tf.math.square(rhand_v[:, :, 1]))
-    rhand_v_sin = rhand_v[:, :, 1] / (rhand_v_dist[:, :, 0] + 1e-8)
-    rhand_v_cos = rhand_v[:, :, 0] / (rhand_v_dist[:, :, 0] + 1e-8)
+    rhand_v_sin = rhand_v[:, :, 1] / (rhand_v_dist + 1e-8)
+    rhand_v_cos = rhand_v[:, :, 0] / (rhand_v_dist + 1e-8)
     rhand_v_angle = tf.math.atan2(
         rhand_v_sin, rhand_v_cos) / np.pi
 
@@ -282,8 +282,8 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
                    constant_values=float("NaN"))
     lip_v_dist = tf.math.sqrt(tf.math.square(
         lip_v[:, :, 0]) + tf.math.square(lip_v[:, :, 1]))
-    lip_v_sin = lip_v[:, :, 1] / (lip_v_dist[:, :, 0] + 1e-8)
-    lip_v_cos = lip_v[:, :, 0] / (lip_v_dist[:, :, 0] + 1e-8)
+    lip_v_sin = lip_v[:, :, 1] / (lip_v_dist + 1e-8)
+    lip_v_cos = lip_v[:, :, 0] / (lip_v_dist + 1e-8)
     lip_v_angle = tf.math.atan2(lip_v_sin, lip_v_cos) / np.pi
 
     rpose_v = rpose[1:] - rpose[:-1]
@@ -291,8 +291,8 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
                      constant_values=float("NaN"))
     rpose_v_dist = tf.math.sqrt(tf.math.square(
         rpose_v[:, :, 0]) + tf.math.square(rpose_v[:, :, 1]))
-    rpose_v_sin = rpose_v[:, :, 1] / (rpose_v_dist[:, :, 0] + 1e-8)
-    rpose_v_cos = rpose_v[:, :, 0] / (rpose_v_dist[:, :, 0] + 1e-8)
+    rpose_v_sin = rpose_v[:, :, 1] / (rpose_v_dist + 1e-8)
+    rpose_v_cos = rpose_v[:, :, 0] / (rpose_v_dist + 1e-8)
     rpose_v_angle = tf.math.atan2(
         rpose_v_sin, rpose_v_cos) / np.pi
     lpose_v = lpose[1:] - lpose[:-1]
@@ -300,8 +300,8 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
                      constant_values=float("NaN"))
     lpose_v_dist = tf.math.sqrt(tf.math.square(
         lpose_v[:, :, 0]) + tf.math.square(lpose_v[:, :, 1]))
-    lpose_v_sin = lpose_v[:, :, 1] / (lpose_v_dist[:, :, 0] + 1e-8)
-    lpose_v_cos = lpose_v[:, :, 0] / (lpose_v_dist[:, :, 0] + 1e-8)
+    lpose_v_sin = lpose_v[:, :, 1] / (lpose_v_dist + 1e-8)
+    lpose_v_cos = lpose_v[:, :, 0] / (lpose_v_dist + 1e-8)
     lpose_v_angle = tf.math.atan2(
         lpose_v_sin, lpose_v_cos) / np.pi
 
