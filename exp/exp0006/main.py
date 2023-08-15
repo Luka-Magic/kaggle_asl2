@@ -338,6 +338,8 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
         rpose, rpose_dist, rpose_angle, rpose_v_dist, rpose_v_angle, rpose_a, rpose_w,
         lpose, lpose_dist, lpose_angle, lpose_v_dist, lpose_v_angle, lpose_a, lpose_w
     ]
+    print([len(d.shape) for d in datas])
+    print([d.shape for d in datas])
     for i in range(len(datas)):
         if len(datas[i].shape) == 3:
             datas[i] = resize_pad(datas[i])
