@@ -126,8 +126,8 @@ MEAN_LIST = []
 STD_LIST = []
 for pos_type in ['lip', 'rh', 'rp', 'lp']:
     for point_type in ['_', '_dist', '_angle', '_v_dist', '_v_angle', '_a', '_w']:
-        MEAN_LIST += [np.load(f'{pos_type}{point_type}_mean.npy')]
-        STD_LIST += [np.load(f'{pos_type}{point_type}_std.npy')]
+        MEAN_LIST += [np.load(CREATE_DATA_DIR / 'mean_std' / f'{pos_type}{point_type}_mean.npy')]
+        STD_LIST += [np.load(CREATE_DATA_DIR / 'mean_std' / f'{pos_type}{point_type}_std.npy')]
 
 
 def load_relevant_data_subset(pq_path):
