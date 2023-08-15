@@ -39,6 +39,9 @@ else:
 LR_MAX = 5e-3
 WD_RATIO = 0.05
 WARMUP_METHOD = "exp"
+FRAME_LEN = 256
+MAX_PHRASE_LENGTH = 40
+
 
 EXP_PATH = Path.cwd()
 ROOT_DIR = EXP_PATH.parents[2]
@@ -79,8 +82,6 @@ Z = [f'z_right_hand_{i}' for i in range(21)] + [f'z_left_hand_{i}' for i in rang
     21)] + [f'z_pose_{i}' for i in POSE] + [f'z_face_{i}' for i in LIP]
 
 SEL_COLS = X + Y + Z
-FRAME_LEN = 128
-MAX_PHRASE_LENGTH = 64
 
 LIP_IDX_X = [i for i, col in enumerate(
     SEL_COLS) if "face" in col and "x" in col]
