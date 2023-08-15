@@ -341,6 +341,8 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
     for i in range(len(datas)):
         datas[i] = (resize_pad(datas[i]) - MEAN_LIST[i]) / STD_LIST[i]
 
+    print([d.shape for d in datas])
+
     x = tf.concat([d for d in datas if len(tf.shape(d)) == 3], axis=1)
     x = x[:, :, :2]  # x, yだけ使う
     s = tf.shape(x)
