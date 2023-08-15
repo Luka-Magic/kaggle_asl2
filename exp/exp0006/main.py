@@ -125,9 +125,11 @@ POSE_LINE_IDX_J = [POSE_LINE_IDX[i][1] for i in range(len(POSE_LINE_IDX))]
 MEAN_LIST = []
 STD_LIST = []
 for pos_type in ['lip', 'rh', 'rp', 'lp']:
-    for point_type in ['_', '_dist', '_angle', '_v_dist', '_v_angle', '_a', '_w']:
-        MEAN_LIST += [np.load(CREATE_DATA_DIR / 'mean_std' / f'{pos_type}{point_type}_mean.npy')]
-        STD_LIST += [np.load(CREATE_DATA_DIR / 'mean_std' / f'{pos_type}{point_type}_std.npy')]
+    for point_type in ['_', '_dist_', '_angle_', '_v_dist_', '_v_angle_', '_a_', '_w_']:
+        MEAN_LIST += [np.load(CREATE_DATA_DIR / 'mean_std' /
+                              f'{pos_type}{point_type}mean.npy')]
+        STD_LIST += [np.load(CREATE_DATA_DIR / 'mean_std' /
+                             f'{pos_type}{point_type}std.npy')]
 
 
 def load_relevant_data_subset(pq_path):
