@@ -12,14 +12,12 @@ import tensorflow_addons as tfa
 from Levenshtein import distance
 import zipfile
 from utils import AverageMeter, validation_metrics, seed_everything
-import wandb
 from sklearn.model_selection import KFold
 
 import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
-WANDB = False
 RESTART = True
 restart_epoch = 11
 best_score = 0.7546
@@ -42,7 +40,6 @@ with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
 
 seed_everything(SEED)
 
-wandb.login()
 
 pad_token = '^'
 pad_token_idx = 59
@@ -280,11 +277,6 @@ def pre_process_fn(lip, rhand, lhand, rpose, lpose, phrase):
 tffiles = [str(DATA_DIR / f"tfds/{file_id}.tfrecord")
            for file_id in df.file_id.unique()]
 
-# kfold
-wandb.init(project='kaggle-asl2', name=exp_name,
-           mode='online' if WANDB else 'disabled')
-wandb_config = wandb.config
-wandb_config.fold = FOLD
 
 kf = KFold(n_splits=N_FOLDS, shuffle=True, random_state=SEED).split(tffiles)
 for fold, (train_indices, valid_indices) in enumerate(kf):
@@ -622,11 +614,6 @@ class CallbackEval(tf.keras.callbacks.Callback):
                 valid_accuracy=f"{valid_accuracy.avg:.4f}",
                 valid_norm_ld=f"{valid_norm_ld.avg:.4f}"
             )
-        wandb.log(
-            {'epoch': epoch,
-             'valid_accuracy': valid_accuracy.avg,
-             'valid_norm_ld': valid_norm_ld.avg}
-        )
         for i in range(16):
             print(f"Target / Predict: {targets[i]} / {predictions[i]}")
 
@@ -878,8 +865,6 @@ for i, (frame, target) in tqdm(enumerate(test_dataset)):
 
 valid_df['fold'] = FOLD
 valid_df.to_csv(SAVE_DIR / "oof_df.csv", index=False)
-
-wandb.finish()
 
 scores = np.array(scores)
 print(np.sum(scores) / len(scores))
