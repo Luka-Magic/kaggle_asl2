@@ -34,7 +34,7 @@ ROOT_DIR = EXP_PATH.parents[2]
 exp_name = EXP_PATH.name
 RAW_DATA_DIR = ROOT_DIR / 'data' / 'original_data'
 DATA_DIR = ROOT_DIR / 'data' / 'kaggle_dataset' / 'irohith_tfrecords'
-CREATE_DATA_DIR = ROOT_DIR / 'data' / 'created_dataset'
+CREATE_DATA_DIR = ROOT_DIR / 'data' / 'created_data'
 SAVE_DIR = ROOT_DIR / 'outputs' / exp_name / f'fold{FOLD}'
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
