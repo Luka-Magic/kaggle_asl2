@@ -12,14 +12,16 @@ import tensorflow_addons as tfa
 from Levenshtein import distance
 import zipfile
 from utils import AverageMeter, validation_metrics, seed_everything
-import wandb
 from sklearn.model_selection import KFold
 
 import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
-WANDB = False
+RESTART = True
+best_epoch = 18
+best_score = 0.8269
+restart_epoch = best_epoch + 1
 # ====================================================
 
 N_FOLDS = 4
@@ -38,8 +40,6 @@ with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
     char_to_num = json.load(f)
 
 seed_everything(SEED)
-
-wandb.login()
 
 pad_token = '^'
 pad_token_idx = 59
@@ -249,11 +249,6 @@ def pre_process_fn(lip, rhand, lhand, rpose, lpose, phrase):
 tffiles = [str(DATA_DIR / f"tfds/{file_id}.tfrecord")
            for file_id in df.file_id.unique()]
 
-# kfold
-wandb.init(project='kaggle-asl2', name=exp_name,
-           mode='online' if WANDB else 'disabled')
-wandb_config = wandb.config
-wandb_config.fold = FOLD
 
 kf = KFold(n_splits=N_FOLDS, shuffle=True, random_state=SEED).split(tffiles)
 for fold, (train_indices, valid_indices) in enumerate(kf):
@@ -538,13 +533,21 @@ WARMUP_METHOD = "exp"
 class CallbackEval(tf.keras.callbacks.Callback):
     """Displays a batch of outputs after every epoch."""
 
-    def __init__(self, dataset):
+    def __init__(self, dataset, restart_info=None):
         super().__init__()
         self.dataset = dataset
-        self.best_norm_ld = -1 * float('inf')
-        self.best_norm_ld_epoch = 0
+        if restart_info is not None:
+            self.best_norm_ld = restart_info["best_norm_ld"]
+            self.best_norm_ld_epoch = restart_info["best_norm_ld_epoch"]
+            self.start_epoch = restart_info["best_norm_ld_epoch"] + 1
+        else:
+            self.best_norm_ld = -1e9
+            self.best_norm_ld_epoch = 0
+            self.start_epoch = 0
 
     def on_epoch_end(self, epoch: int, logs=None):
+        epoch += self.start_epoch
+
         model.save_weights(SAVE_DIR / "model.h5")
         valid_accuracy = AverageMeter()
         valid_norm_ld = AverageMeter()
@@ -574,11 +577,6 @@ class CallbackEval(tf.keras.callbacks.Callback):
                 valid_accuracy=f"{valid_accuracy.avg:.4f}",
                 valid_norm_ld=f"{valid_norm_ld.avg:.4f}"
             )
-        wandb.log(
-            {'epoch': epoch,
-             'valid_accuracy': valid_accuracy.avg,
-             'valid_norm_ld': valid_norm_ld.avg}
-        )
         for i in range(16):
             print(f"Target / Predict: {targets[i]} / {predictions[i]}")
 
@@ -596,10 +594,6 @@ class CallbackEval(tf.keras.callbacks.Callback):
         print(
             f'    best_norm_ld: {self.best_norm_ld:.4f} (epoch {self.best_norm_ld_epoch})')
         print('-*-' * 30)
-
-
-# Callback function to check transcription on the val set.
-validation_callback = CallbackEval(val_dataset)
 
 
 def lrfn(current_step, num_warmup_steps, lr_max, num_cycles=0.50, num_training_steps=N_EPOCHS):
@@ -657,18 +651,6 @@ def plot_lr_schedule(lr_schedule, epochs):
     plt.show()
 
 
-# Learning rate for encoder
-LR_SCHEDULE = [lrfn(step, num_warmup_steps=N_WARMUP_EPOCHS,
-                    lr_max=LR_MAX, num_cycles=0.50) for step in range(N_EPOCHS)]
-# Plot Learning Rate Schedule
-# plot_lr_schedule(LR_SCHEDULE, epochs=N_EPOCHS)
-# Learning Rate Callback
-lr_callback = tf.keras.callbacks.LearningRateScheduler(
-    lambda step: LR_SCHEDULE[step], verbose=0)
-
-# Custom callback to update weight decay with learning rate
-
-
 class WeightDecayCallback(tf.keras.callbacks.Callback):
     def __init__(self, wd_ratio=WD_RATIO):
         self.step_counter = 0
@@ -680,10 +662,30 @@ class WeightDecayCallback(tf.keras.callbacks.Callback):
             f'learning rate: {model.optimizer.learning_rate.numpy():.2e}, weight decay: {model.optimizer.weight_decay.numpy():.2e}')
 
 
+if RESTART:
+    restart_info = {
+        'best_norm_ld': best_score,
+        'best_norm_ld_epoch': best_epoch,
+    }
+    # load best model
+    model.load_weights(SAVE_DIR / "best_model.h5")
+    training_epochs = N_EPOCHS - restart_epoch + 1
+
+    validation_callback = CallbackEval(val_dataset, restart_info)
+
+    # Learning rate for encoder
+    LR_SCHEDULE = [lrfn(step, num_warmup_steps=N_WARMUP_EPOCHS,
+                        lr_max=LR_MAX, num_cycles=0.50) for step in range(N_EPOCHS)][restart_epoch:]
+    lr_callback = tf.keras.callbacks.LearningRateScheduler(
+        lambda step: LR_SCHEDULE[step], verbose=0)
+else:
+    training_epochs = N_EPOCHS
+    validation_callback = CallbackEval(val_dataset)
+
 history = model.fit(
     train_dataset,
     validation_data=val_dataset,
-    epochs=N_EPOCHS,
+    epochs=training_epochs,
     callbacks=[
         validation_callback,
         lr_callback,
@@ -820,8 +822,6 @@ for i, (frame, target) in tqdm(enumerate(test_dataset)):
 
 valid_df['fold'] = FOLD
 valid_df.to_csv(SAVE_DIR / "oof_df.csv", index=False)
-
-wandb.finish()
 
 scores = np.array(scores)
 print(np.sum(scores) / len(scores))

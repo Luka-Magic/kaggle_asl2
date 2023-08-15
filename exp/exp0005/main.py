@@ -19,8 +19,10 @@ warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
 RESTART = True
-restart_epoch = 11
+best_epoch = 11
 best_score = 0.7546
+
+restart_epoch = best_epoch + 1
 # ====================================================
 
 N_FOLDS = 4
@@ -39,7 +41,6 @@ with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
     char_to_num = json.load(f)
 
 seed_everything(SEED)
-
 
 pad_token = '^'
 pad_token_idx = 59
@@ -688,17 +689,6 @@ def plot_lr_schedule(lr_schedule, epochs):
     plt.show()
 
 
-# Learning rate for encoder
-LR_SCHEDULE = [lrfn(step, num_warmup_steps=N_WARMUP_EPOCHS,
-                    lr_max=LR_MAX, num_cycles=0.50) for step in range(N_EPOCHS)]
-# Plot Learning Rate Schedule
-# plot_lr_schedule(LR_SCHEDULE, epochs=N_EPOCHS)
-# Learning Rate Callback
-
-lr_callback = tf.keras.callbacks.LearningRateScheduler(
-    lambda step: LR_SCHEDULE[step], verbose=0)
-
-
 class WeightDecayCallback(tf.keras.callbacks.Callback):
     def __init__(self, wd_ratio=WD_RATIO):
         self.step_counter = 0
@@ -713,14 +703,19 @@ class WeightDecayCallback(tf.keras.callbacks.Callback):
 if RESTART:
     restart_info = {
         'best_norm_ld': best_score,
-        'best_norm_ld_epoch': restart_epoch,
+        'best_norm_ld_epoch': best_epoch,
     }
     # load best model
     model.load_weights(SAVE_DIR / "best_model.h5")
-    training_epochs = N_EPOCHS - restart_epoch
-    for _ in range(restart_epoch):
-        next(lr_callback)
+    training_epochs = N_EPOCHS - restart_epoch + 1
+
     validation_callback = CallbackEval(val_dataset, restart_info)
+
+    # Learning rate for encoder
+    LR_SCHEDULE = [lrfn(step, num_warmup_steps=N_WARMUP_EPOCHS,
+                        lr_max=LR_MAX, num_cycles=0.50) for step in range(N_EPOCHS)][restart_epoch:]
+    lr_callback = tf.keras.callbacks.LearningRateScheduler(
+        lambda step: LR_SCHEDULE[step], verbose=0)
 else:
     training_epochs = N_EPOCHS
     validation_callback = CallbackEval(val_dataset)
@@ -736,7 +731,7 @@ history = model.fit(
     ]
 )
 
-
+# load best model
 model.load_weights(SAVE_DIR / "best_model.h5")
 
 
