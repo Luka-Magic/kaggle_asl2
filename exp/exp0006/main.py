@@ -341,11 +341,11 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
     for i in range(len(datas)):
         datas[i] = (resize_pad(datas[i]) - MEAN_LIST[i]) / STD_LIST[i]
 
-    x = tf.concat([d for d in datas if len(d.shape) == 3], axis=1)
+    x = tf.concat([d for d in datas if len(tf.shape(d)) == 3], axis=1)
     x = x[:, :, :2]  # x, yだけ使う
     s = tf.shape(x)
     x = tf.reshape(x, (s[0], s[1]*s[2]))
-    x = tf.concat([x] + [d for d in datas if len(d.shape) == 2], axis=1)
+    x = tf.concat([x] + [d for d in datas if len(tf.shape(d)) == 2], axis=1)
     x = tf.where(tf.math.is_nan(x), 0.0, x)
     return x
 
