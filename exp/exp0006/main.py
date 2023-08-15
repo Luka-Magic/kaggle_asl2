@@ -17,12 +17,12 @@ from sklearn.model_selection import KFold
 import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
-DEBUG = False
-RESTART = True
-best_epoch = 11
-best_score = 0.7546
+DEBUG = True
+RESTART = False
+# best_epoch = 0
+# best_score = 0
 
-restart_epoch = best_epoch + 1
+# restart_epoch = best_epoch + 1
 # ====================================================
 
 N_FOLDS = 4
@@ -34,6 +34,7 @@ ROOT_DIR = EXP_PATH.parents[2]
 exp_name = EXP_PATH.name
 RAW_DATA_DIR = ROOT_DIR / 'data' / 'original_data'
 DATA_DIR = ROOT_DIR / 'data' / 'kaggle_dataset' / 'irohith_tfrecords'
+CREATE_DATA_DIR = ROOT_DIR / 'data' / 'create_dataset'
 SAVE_DIR = ROOT_DIR / 'outputs' / exp_name / f'fold{FOLD}'
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -104,35 +105,29 @@ RPOSE_IDX_Z = [i for i, col in enumerate(
 LPOSE_IDX_Z = [i for i, col in enumerate(
     SEL_COLS) if "pose" in col and int(col[-2:]) in LPOSE and "z" in col]
 
+LIPS_LINE_IDX = [[0, 10], [21, 30], [22, 31], [23, 32], [
+    24, 33], [25, 34], [26, 35], [27, 36], [28, 37], [29, 38]]
+LIP_LINE_IDX_I = [LIPS_LINE_IDX[i][0] for i in range(len(LIPS_LINE_IDX))]
+LIP_LINE_IDX_J = [LIPS_LINE_IDX[i][1] for i in range(len(LIPS_LINE_IDX))]
+
 HAND_LINE_IDX = [[0, 1], [0, 5], [0, 17], [1, 2], [2, 3], [3, 4], [5, 6], [5, 9], [6, 7], [7, 8], [
     9, 10], [9, 13], [10, 11], [11, 12], [13, 14], [13, 17], [14, 15], [15, 16], [17, 18], [18, 19], [19, 20]]
 HAND_LINE_ADD_IDX = [[2, 4], [2, 8], [2, 12], [2, 16],
                      [2, 20], [4, 8], [8, 12], [12, 16], [16, 20]]
-
 HAND_LINE_IDX += HAND_LINE_ADD_IDX
 HAND_LINE_IDX_I = [HAND_LINE_IDX[i][0] for i in range(len(HAND_LINE_IDX))]
 HAND_LINE_IDX_J = [HAND_LINE_IDX[i][1] for i in range(len(HAND_LINE_IDX))]
 
-RHM = np.load(DATA_DIR / "mean_std/rh_mean.npy")
-LHM = np.load(DATA_DIR / "mean_std/lh_mean.npy")
-RPM = np.load(DATA_DIR / "mean_std/rp_mean.npy")
-LPM = np.load(DATA_DIR / "mean_std/lp_mean.npy")
-LIPM = np.load(DATA_DIR / "mean_std/lip_mean.npy")
+POSE_LINE_IDX = [[0, 1], [1, 2], [2, 3], [3, 4]]
+POSE_LINE_IDX_I = [POSE_LINE_IDX[i][0] for i in range(len(POSE_LINE_IDX))]
+POSE_LINE_IDX_J = [POSE_LINE_IDX[i][1] for i in range(len(POSE_LINE_IDX))]
 
-RHM_HFLIP = RHM.copy()
-RHM_HFLIP[:, 0] = 1 - RHM_HFLIP[:, 0]
-LHM_HFLIP = LHM.copy()
-LHM_HFLIP[:, 0] = 1 - LHM_HFLIP[:, 0]
-RPM_HFLIP = RPM.copy()
-RPM_HFLIP[:, 0] = 1 - RPM_HFLIP[:, 0]
-LPM_HFLIP = LPM.copy()
-LPM_HFLIP[:, 0] = 1 - LPM_HFLIP[:, 0]
-
-RHS = np.load(DATA_DIR / "mean_std/rh_std.npy")
-LHS = np.load(DATA_DIR / "mean_std/lh_std.npy")
-RPS = np.load(DATA_DIR / "mean_std/rp_std.npy")
-LPS = np.load(DATA_DIR / "mean_std/lp_std.npy")
-LIPS = np.load(DATA_DIR / "mean_std/lip_std.npy")
+MEAN_LIST = []
+STD_LIST = []
+for pos_type in ['lip', 'rh', 'rp', 'lp']:
+    for point_type in ['_', '_dist', '_angle', '_v_dist', '_v_angle', '_a', '_w']:
+        MEAN_LIST += [np.load(f'{pos_type}{point_type}_mean.npy')]
+        STD_LIST += [np.load(f'{pos_type}{point_type}_std.npy')]
 
 
 def load_relevant_data_subset(pq_path):
@@ -234,14 +229,42 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
     rhand_diff_i = tf.gather(rhand, HAND_LINE_IDX_I, axis=1)
     rhand_diff_j = tf.gather(rhand, HAND_LINE_IDX_J, axis=1)
     rhand_diff = rhand_diff_j - rhand_diff_i  # shape: (FRAME_LEN, 21, 3)
-
     rhand_dist = tf.math.sqrt(tf.math.square(
         rhand_diff[:, :, 0]) + tf.math.square(rhand_diff[:, :, 1]))[..., tf.newaxis]
-    # handの角度
+
+    lip_diff_i = tf.gather(lip, LIP_LINE_IDX_I, axis=1)
+    lip_diff_j = tf.gather(lip, LIP_LINE_IDX_J, axis=1)
+    lip_diff = lip_diff_j - lip_diff_i  # shape: (FRAME_LEN, 40, 3)
+    lip_dist = tf.math.sqrt(tf.math.square(
+        lip_diff[:, :, 0]) + tf.math.square(lip_diff[:, :, 1]))[..., tf.newaxis]
+
+    rpose_diff_i = tf.gather(rpose, POSE_LINE_IDX_I, axis=1)
+    rpose_diff_j = tf.gather(rpose, POSE_LINE_IDX_J, axis=1)
+    rpose_diff = rpose_diff_j - rpose_diff_i  # shape: (FRAME_LEN, 5, 3)
+    rpose_dist = tf.math.sqrt(tf.math.square(
+        rpose_diff[:, :, 0]) + tf.math.square(rpose_diff[:, :, 1]))[..., tf.newaxis]
+    lpose_diff_i = tf.gather(lpose, POSE_LINE_IDX_I, axis=1)
+    lpose_diff_j = tf.gather(lpose, POSE_LINE_IDX_J, axis=1)
+    lpose_diff = lpose_diff_j - lpose_diff_i  # shape: (FRAME_LEN, 5, 3)
+    lpose_dist = tf.math.sqrt(tf.math.square(
+        lpose_diff[:, :, 0]) + tf.math.square(lpose_diff[:, :, 1]))[..., tf.newaxis]
+    # 角度
     rhand_sin = rhand_diff[:, :, 1] / (rhand_dist[:, :, 0] + 1e-8)
     rhand_cos = rhand_diff[:, :, 0] / (rhand_dist[:, :, 0] + 1e-8)
-    rhand_angle = tf.math.atan2(rhand_sin, rhand_cos)[..., tf.newaxis]
-    # rhandの速度
+    rhand_angle = tf.math.atan2(rhand_sin, rhand_cos)[..., tf.newaxis] / np.pi
+
+    lip_sin = lip_diff[:, :, 1] / (lip_dist[:, :, 0] + 1e-8)
+    lip_cos = lip_diff[:, :, 0] / (lip_dist[:, :, 0] + 1e-8)
+    lip_angle = tf.math.atan2(lip_sin, lip_cos)[..., tf.newaxis] / np.pi
+
+    rpose_sin = rpose_diff[:, :, 1] / (rpose_dist[:, :, 0] + 1e-8)
+    rpose_cos = rpose_diff[:, :, 0] / (rpose_dist[:, :, 0] + 1e-8)
+    rpose_angle = tf.math.atan2(rpose_sin, rpose_cos)[..., tf.newaxis] / np.pi
+    lpose_sin = lpose_diff[:, :, 1] / (lpose_dist[:, :, 0] + 1e-8)
+    lpose_cos = lpose_diff[:, :, 0] / (lpose_dist[:, :, 0] + 1e-8)
+    lpose_angle = tf.math.atan2(lpose_sin, lpose_cos)[..., tf.newaxis] / np.pi
+
+    # 速度
     rhand_v = rhand[1:] - rhand[:-1]
     rhand_v = tf.pad(rhand_v, ([[1, 0], [0, 0], [0, 0]]),
                      constant_values=float("NaN"))
@@ -249,40 +272,78 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
         rhand_v[:, :, 0]) + tf.math.square(rhand_v[:, :, 1]))[..., tf.newaxis]
     rhand_v_sin = rhand_v[:, :, 1] / (rhand_v_dist[:, :, 0] + 1e-8)
     rhand_v_cos = rhand_v[:, :, 0] / (rhand_v_dist[:, :, 0] + 1e-8)
-    rhand_v_angle = tf.math.atan2(rhand_v_sin, rhand_v_cos)[..., tf.newaxis]
+    rhand_v_angle = tf.math.atan2(
+        rhand_v_sin, rhand_v_cos)[..., tf.newaxis] / np.pi
 
-    # rhandの加速度
+    lip_v = lip[1:] - lip[:-1]
+    lip_v = tf.pad(lip_v, ([[1, 0], [0, 0], [0, 0]]),
+                   constant_values=float("NaN"))
+    lip_v_dist = tf.math.sqrt(tf.math.square(
+        lip_v[:, :, 0]) + tf.math.square(lip_v[:, :, 1]))[..., tf.newaxis]
+    lip_v_sin = lip_v[:, :, 1] / (lip_v_dist[:, :, 0] + 1e-8)
+    lip_v_cos = lip_v[:, :, 0] / (lip_v_dist[:, :, 0] + 1e-8)
+    lip_v_angle = tf.math.atan2(lip_v_sin, lip_v_cos)[..., tf.newaxis] / np.pi
+
+    rpose_v = rpose[1:] - rpose[:-1]
+    rpose_v = tf.pad(rpose_v, ([[1, 0], [0, 0], [0, 0]]),
+                     constant_values=float("NaN"))
+    rpose_v_dist = tf.math.sqrt(tf.math.square(
+        rpose_v[:, :, 0]) + tf.math.square(rpose_v[:, :, 1]))[..., tf.newaxis]
+    rpose_v_sin = rpose_v[:, :, 1] / (rpose_v_dist[:, :, 0] + 1e-8)
+    rpose_v_cos = rpose_v[:, :, 0] / (rpose_v_dist[:, :, 0] + 1e-8)
+    rpose_v_angle = tf.math.atan2(
+        rpose_v_sin, rpose_v_cos)[..., tf.newaxis] / np.pi
+    lpose_v = lpose[1:] - lpose[:-1]
+    lpose_v = tf.pad(lpose_v, ([[1, 0], [0, 0], [0, 0]]),
+                     constant_values=float("NaN"))
+    lpose_v_dist = tf.math.sqrt(tf.math.square(
+        lpose_v[:, :, 0]) + tf.math.square(lpose_v[:, :, 1]))[..., tf.newaxis]
+    lpose_v_sin = lpose_v[:, :, 1] / (lpose_v_dist[:, :, 0] + 1e-8)
+    lpose_v_cos = lpose_v[:, :, 0] / (lpose_v_dist[:, :, 0] + 1e-8)
+    lpose_v_angle = tf.math.atan2(
+        lpose_v_sin, lpose_v_cos)[..., tf.newaxis] / np.pi
+
+    # 加速度
     rhand_a = rhand_v[1:] - rhand_v[:-1]
-    rhand_a = tf.pad(rhand_a, ([[2, 0], [0, 0], [0, 0]]),
+    rhand_a = tf.pad(rhand_a, ([[1, 0], [0, 0], [0, 0]]),
+                     constant_values=float("NaN"))
+    lip_a = lip_v[1:] - lip_v[:-1]
+    lip_a = tf.pad(lip_a, ([[1, 0], [0, 0], [0, 0]]),
+                   constant_values=float("NaN"))
+    rpose_a = rpose_v[1:] - rpose_v[:-1]
+    rpose_a = tf.pad(rpose_a, ([[1, 0], [0, 0], [0, 0]]),
+                     constant_values=float("NaN"))
+    lpose_a = lpose_v[1:] - lpose_v[:-1]
+    lpose_a = tf.pad(lpose_a, ([[1, 0], [0, 0], [0, 0]]),
                      constant_values=float("NaN"))
     # rhandの角速度
     rhand_w = rhand_angle[1:] - rhand_angle[:-1]
     rhand_w = tf.pad(rhand_w, ([[1, 0], [0, 0], [0, 0]]),
                      constant_values=float("NaN"))
+    lip_w = lip_angle[1:] - lip_angle[:-1]
+    lip_w = tf.pad(lip_w, ([[1, 0], [0, 0], [0, 0]]),
+                   constant_values=float("NaN"))
+    rpose_w = rpose_angle[1:] - rpose_angle[:-1]
+    rpose_w = tf.pad(rpose_w, ([[1, 0], [0, 0], [0, 0]]),
+                     constant_values=float("NaN"))
+    lpose_w = lpose_angle[1:] - lpose_angle[:-1]
+    lpose_w = tf.pad(lpose_w, ([[1, 0], [0, 0], [0, 0]]),
+                     constant_values=float("NaN"))
 
-    # 反転
-    if n_nan_rhand > n_nan_lhand:
-        rhand = (resize_pad(rhand) - LHM_HFLIP) / LHS
-        rpose = (resize_pad(rpose) - LPM_HFLIP) / LPS
-        lpose = (resize_pad(lpose) - RPM_HFLIP) / RPS
-    else:
-        rhand = (resize_pad(rhand) - RHM) / RHS
-        rpose = (resize_pad(rpose) - RPM) / RPS
-        lpose = (resize_pad(lpose) - LPM) / LPS
-    lip = (resize_pad(lip) - LIPM) / LIPS
+    datas = [
+        lip, lip_dist, lip_angle, lip_v_dist, lip_v_angle, lip_a, lip_w,
+        rhand, rhand_dist, rhand_angle, rhand_v_dist, rhand_v_angle, rhand_a, rhand_w,
+        rpose, rpose_dist, rpose_angle, rpose_v_dist, rpose_v_angle, rpose_a, rpose_w,
+        lpose, lpose_dist, lpose_angle, lpose_v_dist, lpose_v_angle, lpose_a, lpose_w
+    ]
+    for i in range(len(datas)):
+        datas[i] = (resize_pad(datas[i]) - MEAN_LIST[i]) / STD_LIST[i]
 
-    rhand_v = resize_pad(rhand_v)
-    rhand_a = resize_pad(rhand_a)
-    rhand_dist = resize_pad(rhand_dist)[:, :, 0]
-    rhand_angle = resize_pad(rhand_angle)[:, :, 0]
-    rhand_w = resize_pad(rhand_w)[:, :, 0]
-
-    x = tf.concat([lip, rhand, lhand, rpose, lpose, rhand_a], axis=1)
+    x = tf.concat([d for d in datas if len(d.shape) == 3], axis=1)
     x = x[:, :, :2]  # x, yだけ使う
     s = tf.shape(x)
     x = tf.reshape(x, (s[0], s[1]*s[2]))
-    x = tf.concat([x, rhand_dist, rhand_angle, rhand_w,
-                  rhand_v_dist, rhand_v_angle], axis=1)
+    x = tf.concat([x] + [d for d in datas if len(d.shape) == 2], axis=1)
     x = tf.where(tf.math.is_nan(x), 0.0, x)
     return x
 
