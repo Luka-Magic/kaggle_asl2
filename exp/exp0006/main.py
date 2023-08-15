@@ -119,10 +119,14 @@ RPM = np.load(DATA_DIR / "mean_std/rp_mean.npy")
 LPM = np.load(DATA_DIR / "mean_std/lp_mean.npy")
 LIPM = np.load(DATA_DIR / "mean_std/lip_mean.npy")
 
-RHM_HFLIP = RHM * [-1, 1, 1]
-LHM_HFLIP = LHM * [-1, 1, 1]
-RPM_HFLIP = RPM * [-1, 1, 1]
-LPM_HFLIP = LPM * [-1, 1, 1]
+RHM_HFLIP = RHM.copy()
+RHM_HFLIP[:, 0] = 1 - RHM_HFLIP[:, 0]
+LHM_HFLIP = LHM.copy()
+LHM_HFLIP[:, 0] = 1 - LHM_HFLIP[:, 0]
+RPM_HFLIP = RPM.copy()
+RPM_HFLIP[:, 0] = 1 - RPM_HFLIP[:, 0]
+LPM_HFLIP = LPM.copy()
+LPM_HFLIP[:, 0] = 1 - LPM_HFLIP[:, 0]
 
 RHS = np.load(DATA_DIR / "mean_std/rh_std.npy")
 LHS = np.load(DATA_DIR / "mean_std/lh_std.npy")
@@ -209,9 +213,9 @@ def pre_process0(x):
 @tf.function()
 def pre_process1(lip, rhand, lhand, rpose, lpose):
     n_nan_rhand = tf.reduce_sum(
-        tf.cast(tf.math.equal(rhand, 0.0), tf.int32), axis=[1, 2])
+        tf.cast(tf.math.is_nan(rhand), tf.int32))
     n_nan_lhand = tf.reduce_sum(
-        tf.cast(tf.math.equal(lhand, 0.0), tf.int32), axis=[1, 2])
+        tf.cast(tf.math.is_nan(lhand), tf.int32))
 
     def invert_x(x):
         x, y, z = tf.unstack(x, axis=-1)
@@ -239,15 +243,21 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
     rhand_angle = tf.math.atan2(rhand_sin, rhand_cos)[..., tf.newaxis]
     # rhandの速度
     rhand_v = rhand[1:] - rhand[:-1]
-    rhand_v = tf.pad(rhand_v, ([[1, 0], [0, 0]]),
+    rhand_v = tf.pad(rhand_v, ([[1, 0], [0, 0], [0, 0]]),
                      constant_values=float("NaN"))
+    rhand_v_dist = tf.math.sqrt(tf.math.square(
+        rhand_v[:, :, 0]) + tf.math.square(rhand_v[:, :, 1]))[..., tf.newaxis]
+    rhand_v_sin = rhand_v[:, :, 1] / (rhand_v_dist[:, :, 0] + 1e-8)
+    rhand_v_cos = rhand_v[:, :, 0] / (rhand_v_dist[:, :, 0] + 1e-8)
+    rhand_v_angle = tf.math.atan2(rhand_v_sin, rhand_v_cos)[..., tf.newaxis]
+
     # rhandの加速度
     rhand_a = rhand_v[1:] - rhand_v[:-1]
-    rhand_a = tf.pad(rhand_a, ([[2, 0], [0, 0]]),
+    rhand_a = tf.pad(rhand_a, ([[2, 0], [0, 0], [0, 0]]),
                      constant_values=float("NaN"))
     # rhandの角速度
     rhand_w = rhand_angle[1:] - rhand_angle[:-1]
-    rhand_w = tf.pad(rhand_w, ([[1, 0], [0, 0]]),
+    rhand_w = tf.pad(rhand_w, ([[1, 0], [0, 0], [0, 0]]),
                      constant_values=float("NaN"))
 
     # 反転
@@ -262,21 +272,17 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
     lip = (resize_pad(lip) - LIPM) / LIPS
 
     rhand_v = resize_pad(rhand_v)
-    # lhand_v = resize_pad(lhand_v)
     rhand_a = resize_pad(rhand_a)
-    # lhand_a = resize_pad(lhand_a)
     rhand_dist = resize_pad(rhand_dist)[:, :, 0]
-    # lhand_dist = resize_pad(lhand_dist)[:, :, 0]
     rhand_angle = resize_pad(rhand_angle)[:, :, 0]
-    # lhand_angle = resize_pad(lhand_angle)[:, :, 0]
     rhand_w = resize_pad(rhand_w)[:, :, 0]
-    # lhand_w = resize_pad(lhand_w)[:, :, 0]
 
-    x = tf.concat([lip, rhand, lhand, rpose, lpose, rhand_v, rhand_a], axis=1)
+    x = tf.concat([lip, rhand, lhand, rpose, lpose, rhand_a], axis=1)
     x = x[:, :, :2]  # x, yだけ使う
     s = tf.shape(x)
     x = tf.reshape(x, (s[0], s[1]*s[2]))
-    x = tf.concat([x, rhand_dist, rhand_angle, rhand_w], axis=1)
+    x = tf.concat([x, rhand_dist, rhand_angle, rhand_w,
+                  rhand_v_dist, rhand_v_angle], axis=1)
     x = tf.where(tf.math.is_nan(x), 0.0, x)
     return x
 

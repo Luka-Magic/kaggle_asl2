@@ -19,8 +19,8 @@ warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
 RESTART = True
-best_epoch = 38
-best_score = 0.8681
+best_epoch = 49
+best_score = 0.8714
 restart_epoch = best_epoch + 1
 # ====================================================
 
@@ -675,7 +675,7 @@ if RESTART:
 
     # Learning rate for encoder
     LR_SCHEDULE = [lrfn(step, num_warmup_steps=N_WARMUP_EPOCHS,
-                        lr_max=LR_MAX, num_cycles=0.50) for step in range(N_EPOCHS)][restart_epoch:]
+                        lr_max=LR_MAX, num_cycles=0.50) for step in range(N_EPOCHS)][best_epoch:]
     lr_callback = tf.keras.callbacks.LearningRateScheduler(
         lambda step: LR_SCHEDULE[step], verbose=0)
 else:
