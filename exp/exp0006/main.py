@@ -320,16 +320,16 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
                      constant_values=float("NaN"))
     # rhandの角速度
     rhand_w = rhand_angle[1:] - rhand_angle[:-1]
-    rhand_w = tf.pad(rhand_w, ([[1, 0], [0, 0], [0, 0]]),
+    rhand_w = tf.pad(rhand_w, ([[1, 0], [0, 0]]),
                      constant_values=float("NaN"))
     lip_w = lip_angle[1:] - lip_angle[:-1]
-    lip_w = tf.pad(lip_w, ([[1, 0], [0, 0], [0, 0]]),
+    lip_w = tf.pad(lip_w, ([[1, 0], [0, 0]]),
                    constant_values=float("NaN"))
     rpose_w = rpose_angle[1:] - rpose_angle[:-1]
-    rpose_w = tf.pad(rpose_w, ([[1, 0], [0, 0], [0, 0]]),
+    rpose_w = tf.pad(rpose_w, ([[1, 0], [0, 0]]),
                      constant_values=float("NaN"))
     lpose_w = lpose_angle[1:] - lpose_angle[:-1]
-    lpose_w = tf.pad(lpose_w, ([[1, 0], [0, 0], [0, 0]]),
+    lpose_w = tf.pad(lpose_w, ([[1, 0], [0, 0]]),
                      constant_values=float("NaN"))
 
     datas = [
