@@ -17,7 +17,7 @@ from sklearn.model_selection import KFold
 import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
-DEBUG = True
+DEBUG = False
 RESTART = False
 # best_epoch = 0
 # best_score = 0
@@ -349,18 +349,12 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
         lpose, lpose_dist, lpose_angle, lpose_v_dist, lpose_v_angle, lpose_a, lpose_w
     ]
 
-    print([d.shape for d in datas])
-    print([len(tf.shape(d)) for d in datas])
-    print([len(mean.shape) for mean in MEAN_LIST])
-
     for i in range(len(datas)):
         if len(datas[i].shape) == 3:
             datas[i] = resize_pad(datas[i])
         elif len(datas[i].shape) == 2:
             datas[i] = resize_pad(datas[i][..., tf.newaxis])[:, :, 0]
         datas[i] = (datas[i] - MEAN_LIST[i]) / STD_LIST[i]
-
-    print([d.shape for d in datas])
 
     x = tf.concat([d for d in datas if len(tf.shape(d)) == 3], axis=1)
     x = x[:, :, :2]  # x, yだけ使う
