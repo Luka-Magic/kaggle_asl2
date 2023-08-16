@@ -257,15 +257,19 @@ if DEBUG:
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(train_batch_size).prefetch(tf.data.AUTOTUNE)
     val_dataset = tf.data.TFRecordDataset(tffiles[1:2]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(val_batch_size).prefetch(tf.data.AUTOTUNE)
+    sample_dataset = tf.data.TFRecordDataset([tffiles[1:2]]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
+        pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(1).prefetch(tf.data.AUTOTUNE)
     valid_pd_ids = [int(Path(path_str).stem) for path_str in tffiles[1:2]]
 else:
     train_dataset = tf.data.TFRecordDataset(tffiles[1:]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(train_batch_size).prefetch(tf.data.AUTOTUNE)
     val_dataset = tf.data.TFRecordDataset([tffiles_raw[:1]]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(val_batch_size).prefetch(tf.data.AUTOTUNE)
+    sample_dataset = tf.data.TFRecordDataset([tffiles[0:1]]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
+        pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(1).prefetch(tf.data.AUTOTUNE)
     valid_pd_ids = [int(Path(tffiles[0]).stem)]
 
-batch = next(iter(val_dataset))
+batch = next(iter(sample_dataset))
 print(batch[0].shape, batch[1].shape)
 
 
@@ -638,7 +642,7 @@ lr_callback = tf.keras.callbacks.LearningRateScheduler(
 
 history = model.fit(
     train_dataset,
-    validation_data=val_dataset,
+    # validation_data=val_dataset,
     epochs=training_epochs,
     callbacks=[
         validation_callback,
