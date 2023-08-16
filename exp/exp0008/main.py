@@ -23,8 +23,6 @@ RESTART = False
 # best_score = 0
 # ====================================================
 
-N_FOLDS = 4
-FOLD = 0
 SEED = 77
 
 if DEBUG:
@@ -41,9 +39,9 @@ EXP_PATH = Path.cwd()
 ROOT_DIR = EXP_PATH.parents[2]
 exp_name = EXP_PATH.name
 RAW_DATA_DIR = ROOT_DIR / 'data' / 'original_data'
-DATA_DIR = ROOT_DIR / 'data' / 'kaggle_dataset' / 'irohith_tfrecords'
+KAGGLE_DATA_DIR = ROOT_DIR / 'data' / 'kaggle_dataset'
 CREATE_DATA_DIR = ROOT_DIR / 'data' / 'created_data'
-SAVE_DIR = ROOT_DIR / 'outputs' / exp_name / f'fold{FOLD}'
+SAVE_DIR = ROOT_DIR / 'outputs' / exp_name
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
@@ -415,14 +413,10 @@ def pre_process_fn(lip, rhand, lhand, rpose, lpose, phrase):
     return pre_process1(lip, rhand, lhand, rpose, lpose), phrase
 
 
-tffiles = [str(DATA_DIR / f"tfds/{file_id}.tfrecord")
+tffiles = [str(KAGGLE_DATA_DIR / 'irohith_tfrecords' / f"tfds/{file_id}.tfrecord")
            for file_id in df.file_id.unique()]
-
-
-kf = KFold(n_splits=N_FOLDS, shuffle=True, random_state=SEED).split(tffiles)
-for fold, (train_indices, valid_indices) in enumerate(kf):
-    if fold == FOLD:
-        break
+tffiles_raw = [str(KAGGLE_DATA_DIR / 'create_tfrecords' / f"tfds/{file_id}.tfrecord")
+               for file_id in df.file_id.unique()]
 
 train_batch_size = 32
 val_batch_size = 32
@@ -434,11 +428,11 @@ if DEBUG:
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(val_batch_size).prefetch(tf.data.AUTOTUNE)
     valid_pd_ids = [int(Path(path_str).stem) for path_str in tffiles[1:2]]
 else:
-    train_dataset = tf.data.TFRecordDataset([tffiles[i] for i in train_indices.tolist()]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
+    train_dataset = tf.data.TFRecordDataset(tffiles[1:]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(train_batch_size).prefetch(tf.data.AUTOTUNE)
-    val_dataset = tf.data.TFRecordDataset([tffiles[i] for i in valid_indices.tolist()]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
+    val_dataset = tf.data.TFRecordDataset([tffiles_raw[:1]]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(val_batch_size).prefetch(tf.data.AUTOTUNE)
-    valid_pd_ids = [int(Path(tffiles[i]).stem) for i in valid_indices.tolist()]
+    valid_pd_ids = [int(Path(tffiles[0]).stem)]
 
 batch = next(iter(val_dataset))
 print(batch[0].shape, batch[1].shape)
@@ -949,7 +943,6 @@ for i, (frame, target) in tqdm(enumerate(test_dataset)):
     if i % 50 == 0:
         print(np.sum(scores) / len(scores))
 
-valid_df['fold'] = FOLD
 valid_df.to_csv(SAVE_DIR / "oof_df.csv", index=False)
 
 scores = np.array(scores)

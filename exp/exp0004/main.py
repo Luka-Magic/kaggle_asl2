@@ -40,7 +40,7 @@ ROOT_DIR = EXP_PATH.parents[2]
 exp_name = EXP_PATH.name
 RAW_DATA_DIR = ROOT_DIR / 'data' / 'original_data'
 KAGGLE_DATA_DIR = ROOT_DIR / 'data' / 'kaggle_dataset'
-SAVE_DIR = ROOT_DIR / 'outputs' / exp_name / f'fold{FOLD}'
+SAVE_DIR = ROOT_DIR / 'outputs' / exp_name
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
@@ -765,7 +765,6 @@ for i, (frame, target) in tqdm(enumerate(test_dataset)):
     if i % 50 == 0:
         print(np.sum(scores) / len(scores))
 
-valid_df['fold'] = FOLD
 valid_df.to_csv(SAVE_DIR / "oof_df.csv", index=False)
 
 scores = np.array(scores)
