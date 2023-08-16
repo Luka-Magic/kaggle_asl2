@@ -19,11 +19,11 @@ import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
-RESTART = True
+RESTART = False
 
-best_epoch = 19
-best_score = 0.8516
-restart_epoch = best_epoch + 1
+# best_epoch = 0
+# best_score = 0
+# restart_epoch = best_epoch + 1
 # ====================================================
 
 N_FOLDS = 4
