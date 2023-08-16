@@ -248,7 +248,7 @@ tffiles = [str(KAGGLE_DATA_DIR / 'irohith_tfrecords' / f"tfds/{file_id}.tfrecord
            for file_id in df.file_id.unique()]
 tffiles_raw = [str(KAGGLE_DATA_DIR / 'create_tfrecords' / f"tfds/{file_id}.tfrecord")
                for file_id in df.file_id.unique()]
-
+print(tffiles_raw[:1])
 train_batch_size = 32
 val_batch_size = 32
 
