@@ -19,9 +19,9 @@ import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
-RESTART = True
-best_epoch = 18
-best_score = 0.8460
+RESTART = False
+# best_epoch = 0
+# best_score = 0
 # ====================================================
 
 N_FOLDS = 4
