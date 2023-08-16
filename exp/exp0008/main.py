@@ -17,7 +17,7 @@ from augment import augment_fn
 import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
-DEBUG = False
+DEBUG = True
 RESTART = False
 # best_epoch = 0
 # best_score = 0
@@ -130,6 +130,13 @@ POSE_LINE_IDX = [[0, 1], [1, 2], [2, 3], [3, 4]]
 POSE_LINE_IDX_I = [POSE_LINE_IDX[i][0] for i in range(len(POSE_LINE_IDX))]
 POSE_LINE_IDX_J = [POSE_LINE_IDX[i][1] for i in range(len(POSE_LINE_IDX))]
 
+DATA_INDICES = [
+    0, 1, 2,
+    7, 8, 9,
+    14, 15, 16,
+    21, 22, 23,
+]
+
 MEAN_LIST = []
 STD_LIST = []
 for pos_type in ['lip', 'rh', 'rp', 'lp']:
@@ -138,6 +145,9 @@ for pos_type in ['lip', 'rh', 'rp', 'lp']:
                               f'{pos_type}{point_type}mean.npy')]
         STD_LIST += [np.load(CREATE_DATA_DIR / 'mean_std' /
                              f'{pos_type}{point_type}std.npy')]
+
+MEAN_LIST = [MEAN_LIST[i] for i in DATA_INDICES]
+STD_LIST = [STD_LIST[i] for i in DATA_INDICES]
 
 
 def load_relevant_data_subset(pq_path):
@@ -276,76 +286,76 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
     lpose_angle = tf.math.atan2(lpose_sin, lpose_cos) / np.pi
 
     # 速度
-    rhand_v = rhand[1:] - rhand[:-1]
-    rhand_v = tf.pad(rhand_v, ([[1, 0], [0, 0], [0, 0]]),
-                     constant_values=float("NaN"))
-    rhand_v_dist = tf.math.sqrt(tf.math.square(
-        rhand_v[:, :, 0]) + tf.math.square(rhand_v[:, :, 1]))
-    rhand_v_sin = rhand_v[:, :, 1] / (rhand_v_dist + 1e-8)
-    rhand_v_cos = rhand_v[:, :, 0] / (rhand_v_dist + 1e-8)
-    rhand_v_angle = tf.math.atan2(
-        rhand_v_sin, rhand_v_cos) / np.pi
+    # rhand_v = rhand[1:] - rhand[:-1]
+    # rhand_v = tf.pad(rhand_v, ([[1, 0], [0, 0], [0, 0]]),
+    #                  constant_values=float("NaN"))
+    # rhand_v_dist = tf.math.sqrt(tf.math.square(
+    #     rhand_v[:, :, 0]) + tf.math.square(rhand_v[:, :, 1]))
+    # rhand_v_sin = rhand_v[:, :, 1] / (rhand_v_dist + 1e-8)
+    # rhand_v_cos = rhand_v[:, :, 0] / (rhand_v_dist + 1e-8)
+    # rhand_v_angle = tf.math.atan2(
+    #     rhand_v_sin, rhand_v_cos) / np.pi
 
-    lip_v = lip[1:] - lip[:-1]
-    lip_v = tf.pad(lip_v, ([[1, 0], [0, 0], [0, 0]]),
-                   constant_values=float("NaN"))
-    lip_v_dist = tf.math.sqrt(tf.math.square(
-        lip_v[:, :, 0]) + tf.math.square(lip_v[:, :, 1]))
-    lip_v_sin = lip_v[:, :, 1] / (lip_v_dist + 1e-8)
-    lip_v_cos = lip_v[:, :, 0] / (lip_v_dist + 1e-8)
-    lip_v_angle = tf.math.atan2(lip_v_sin, lip_v_cos) / np.pi
+    # lip_v = lip[1:] - lip[:-1]
+    # lip_v = tf.pad(lip_v, ([[1, 0], [0, 0], [0, 0]]),
+    #                constant_values=float("NaN"))
+    # lip_v_dist = tf.math.sqrt(tf.math.square(
+    #     lip_v[:, :, 0]) + tf.math.square(lip_v[:, :, 1]))
+    # lip_v_sin = lip_v[:, :, 1] / (lip_v_dist + 1e-8)
+    # lip_v_cos = lip_v[:, :, 0] / (lip_v_dist + 1e-8)
+    # lip_v_angle = tf.math.atan2(lip_v_sin, lip_v_cos) / np.pi
 
-    rpose_v = rpose[1:] - rpose[:-1]
-    rpose_v = tf.pad(rpose_v, ([[1, 0], [0, 0], [0, 0]]),
-                     constant_values=float("NaN"))
-    rpose_v_dist = tf.math.sqrt(tf.math.square(
-        rpose_v[:, :, 0]) + tf.math.square(rpose_v[:, :, 1]))
-    rpose_v_sin = rpose_v[:, :, 1] / (rpose_v_dist + 1e-8)
-    rpose_v_cos = rpose_v[:, :, 0] / (rpose_v_dist + 1e-8)
-    rpose_v_angle = tf.math.atan2(
-        rpose_v_sin, rpose_v_cos) / np.pi
-    lpose_v = lpose[1:] - lpose[:-1]
-    lpose_v = tf.pad(lpose_v, ([[1, 0], [0, 0], [0, 0]]),
-                     constant_values=float("NaN"))
-    lpose_v_dist = tf.math.sqrt(tf.math.square(
-        lpose_v[:, :, 0]) + tf.math.square(lpose_v[:, :, 1]))
-    lpose_v_sin = lpose_v[:, :, 1] / (lpose_v_dist + 1e-8)
-    lpose_v_cos = lpose_v[:, :, 0] / (lpose_v_dist + 1e-8)
-    lpose_v_angle = tf.math.atan2(
-        lpose_v_sin, lpose_v_cos) / np.pi
+    # rpose_v = rpose[1:] - rpose[:-1]
+    # rpose_v = tf.pad(rpose_v, ([[1, 0], [0, 0], [0, 0]]),
+    #                  constant_values=float("NaN"))
+    # rpose_v_dist = tf.math.sqrt(tf.math.square(
+    #     rpose_v[:, :, 0]) + tf.math.square(rpose_v[:, :, 1]))
+    # rpose_v_sin = rpose_v[:, :, 1] / (rpose_v_dist + 1e-8)
+    # rpose_v_cos = rpose_v[:, :, 0] / (rpose_v_dist + 1e-8)
+    # rpose_v_angle = tf.math.atan2(
+    #     rpose_v_sin, rpose_v_cos) / np.pi
+    # lpose_v = lpose[1:] - lpose[:-1]
+    # lpose_v = tf.pad(lpose_v, ([[1, 0], [0, 0], [0, 0]]),
+    #                  constant_values=float("NaN"))
+    # lpose_v_dist = tf.math.sqrt(tf.math.square(
+    #     lpose_v[:, :, 0]) + tf.math.square(lpose_v[:, :, 1]))
+    # lpose_v_sin = lpose_v[:, :, 1] / (lpose_v_dist + 1e-8)
+    # lpose_v_cos = lpose_v[:, :, 0] / (lpose_v_dist + 1e-8)
+    # lpose_v_angle = tf.math.atan2(
+    #     lpose_v_sin, lpose_v_cos) / np.pi
 
-    # 加速度
-    rhand_a = rhand_v[1:] - rhand_v[:-1]
-    rhand_a = tf.pad(rhand_a, ([[1, 0], [0, 0], [0, 0]]),
-                     constant_values=float("NaN"))
-    lip_a = lip_v[1:] - lip_v[:-1]
-    lip_a = tf.pad(lip_a, ([[1, 0], [0, 0], [0, 0]]),
-                   constant_values=float("NaN"))
-    rpose_a = rpose_v[1:] - rpose_v[:-1]
-    rpose_a = tf.pad(rpose_a, ([[1, 0], [0, 0], [0, 0]]),
-                     constant_values=float("NaN"))
-    lpose_a = lpose_v[1:] - lpose_v[:-1]
-    lpose_a = tf.pad(lpose_a, ([[1, 0], [0, 0], [0, 0]]),
-                     constant_values=float("NaN"))
-    # rhandの角速度
-    rhand_w = rhand_angle[1:] - rhand_angle[:-1]
-    rhand_w = tf.pad(rhand_w, ([[1, 0], [0, 0]]),
-                     constant_values=float("NaN"))
-    lip_w = lip_angle[1:] - lip_angle[:-1]
-    lip_w = tf.pad(lip_w, ([[1, 0], [0, 0]]),
-                   constant_values=float("NaN"))
-    rpose_w = rpose_angle[1:] - rpose_angle[:-1]
-    rpose_w = tf.pad(rpose_w, ([[1, 0], [0, 0]]),
-                     constant_values=float("NaN"))
-    lpose_w = lpose_angle[1:] - lpose_angle[:-1]
-    lpose_w = tf.pad(lpose_w, ([[1, 0], [0, 0]]),
-                     constant_values=float("NaN"))
+    # # 加速度
+    # rhand_a = rhand_v[1:] - rhand_v[:-1]
+    # rhand_a = tf.pad(rhand_a, ([[1, 0], [0, 0], [0, 0]]),
+    #                  constant_values=float("NaN"))
+    # lip_a = lip_v[1:] - lip_v[:-1]
+    # lip_a = tf.pad(lip_a, ([[1, 0], [0, 0], [0, 0]]),
+    #                constant_values=float("NaN"))
+    # rpose_a = rpose_v[1:] - rpose_v[:-1]
+    # rpose_a = tf.pad(rpose_a, ([[1, 0], [0, 0], [0, 0]]),
+    #                  constant_values=float("NaN"))
+    # lpose_a = lpose_v[1:] - lpose_v[:-1]
+    # lpose_a = tf.pad(lpose_a, ([[1, 0], [0, 0], [0, 0]]),
+    #                  constant_values=float("NaN"))
+    # # rhandの角速度
+    # rhand_w = rhand_angle[1:] - rhand_angle[:-1]
+    # rhand_w = tf.pad(rhand_w, ([[1, 0], [0, 0]]),
+    #                  constant_values=float("NaN"))
+    # lip_w = lip_angle[1:] - lip_angle[:-1]
+    # lip_w = tf.pad(lip_w, ([[1, 0], [0, 0]]),
+    #                constant_values=float("NaN"))
+    # rpose_w = rpose_angle[1:] - rpose_angle[:-1]
+    # rpose_w = tf.pad(rpose_w, ([[1, 0], [0, 0]]),
+    #                  constant_values=float("NaN"))
+    # lpose_w = lpose_angle[1:] - lpose_angle[:-1]
+    # lpose_w = tf.pad(lpose_w, ([[1, 0], [0, 0]]),
+    #                  constant_values=float("NaN"))
 
     datas = [
-        lip, lip_dist, lip_angle, lip_v_dist, lip_v_angle, lip_a, lip_w,
-        rhand, rhand_dist, rhand_angle, rhand_v_dist, rhand_v_angle, rhand_a, rhand_w,
-        rpose, rpose_dist, rpose_angle, rpose_v_dist, rpose_v_angle, rpose_a, rpose_w,
-        lpose, lpose_dist, lpose_angle, lpose_v_dist, lpose_v_angle, lpose_a, lpose_w
+        lip, lip_dist, lip_angle,
+        rhand, rhand_dist, rhand_angle,
+        rpose, rpose_dist, rpose_angle,
+        lpose, lpose_dist, lpose_angle,
     ]
 
     for i in range(len(datas)):
@@ -354,13 +364,6 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
         elif len(datas[i].shape) == 2:
             datas[i] = resize_pad(datas[i][..., tf.newaxis])[:, :, 0]
         datas[i] = (datas[i] - MEAN_LIST[i]) / STD_LIST[i]
-
-    datas = datas[
-        0, 1,
-        7, 8, 9, 10, 11, 12, 13,
-        14, 15, 16, 17, 18, 19, 20,
-        21, 22, 23, 24, 25, 26, 27,
-    ]
 
     x = tf.concat([d for d in datas if len(tf.shape(d)) == 3], axis=1)
     x = x[:, :, :2]  # x, yだけ使う
