@@ -18,7 +18,7 @@ import sys
 import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
-DEBUG = True
+DEBUG = False
 RESTART = False
 # best_epoch = 0
 # best_score = 0
