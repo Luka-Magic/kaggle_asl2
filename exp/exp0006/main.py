@@ -802,16 +802,16 @@ else:
 lr_callback = tf.keras.callbacks.LearningRateScheduler(
     lambda step: LR_SCHEDULE[step], verbose=0)
 
-# history = model.fit(
-#     train_dataset,
-#     validation_data=val_dataset,
-#     epochs=training_epochs,
-#     callbacks=[
-#         validation_callback,
-#         lr_callback,
-#         WeightDecayCallback(),
-#     ]
-# )
+history = model.fit(
+    train_dataset,
+    validation_data=val_dataset,
+    epochs=training_epochs,
+    callbacks=[
+        validation_callback,
+        lr_callback,
+        WeightDecayCallback(),
+    ]
+)
 
 # load best model
 model.load_weights(SAVE_DIR / "best_model.h5")
