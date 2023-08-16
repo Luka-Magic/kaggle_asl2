@@ -18,7 +18,7 @@ import sys
 import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
-DEBUG = False
+DEBUG = True
 RESTART = False
 # best_epoch = 0
 # best_score = 0
@@ -265,7 +265,7 @@ if DEBUG:
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(train_batch_size).prefetch(tf.data.AUTOTUNE)
     val_dataset = tf.data.TFRecordDataset(tffiles[1:2]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(val_batch_size).prefetch(tf.data.AUTOTUNE)
-    sample_dataset = tf.data.TFRecordDataset([tffiles[0:1]]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
+    sample_dataset = tf.data.TFRecordDataset([tffiles[1:2]]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(1).prefetch(tf.data.AUTOTUNE)
     valid_pd_ids = [int(Path(path_str).stem) for path_str in tffiles[1:2]]
 else:
@@ -647,6 +647,8 @@ else:
 
 lr_callback = tf.keras.callbacks.LearningRateScheduler(
     lambda step: LR_SCHEDULE[step], verbose=0)
+
+
 history = model.fit(
     train_dataset,
     # validation_data=val_dataset,
