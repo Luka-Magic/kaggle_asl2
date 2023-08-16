@@ -818,6 +818,8 @@ else:
 
 lr_callback = tf.keras.callbacks.LearningRateScheduler(
     lambda step: LR_SCHEDULE[step], verbose=0)
+
+
 history = model.fit(
     train_dataset,
     validation_data=val_dataset,

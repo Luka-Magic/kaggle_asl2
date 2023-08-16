@@ -18,21 +18,28 @@ import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
-RESTART = True
-best_epoch = 49
-best_score = 0.8714
-restart_epoch = best_epoch + 1
+RESTART = False
+# best_epoch = 0
+# best_score = 0
 # ====================================================
 
-N_FOLDS = 4
-FOLD = 0
 SEED = 77
+
+if DEBUG:
+    N_EPOCHS = 2
+    N_WARMUP_EPOCHS = 0
+else:
+    N_EPOCHS = 20
+    N_WARMUP_EPOCHS = 4
+LR_MAX = 5e-3
+WD_RATIO = 0.05
+WARMUP_METHOD = "exp"
 
 EXP_PATH = Path.cwd()
 ROOT_DIR = EXP_PATH.parents[2]
 exp_name = EXP_PATH.name
 RAW_DATA_DIR = ROOT_DIR / 'data' / 'original_data'
-DATA_DIR = ROOT_DIR / 'data' / 'kaggle_dataset' / 'irohith_tfrecords'
+KAGGLE_DATA_DIR = ROOT_DIR / 'data' / 'kaggle_dataset'
 SAVE_DIR = ROOT_DIR / 'outputs' / exp_name / f'fold{FOLD}'
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -103,17 +110,17 @@ RPOSE_IDX_Z = [i for i, col in enumerate(
 LPOSE_IDX_Z = [i for i, col in enumerate(
     SEL_COLS) if "pose" in col and int(col[-2:]) in LPOSE and "z" in col]
 
-RHM = np.load(DATA_DIR / "mean_std/rh_mean.npy")
-LHM = np.load(DATA_DIR / "mean_std/lh_mean.npy")
-RPM = np.load(DATA_DIR / "mean_std/rp_mean.npy")
-LPM = np.load(DATA_DIR / "mean_std/lp_mean.npy")
-LIPM = np.load(DATA_DIR / "mean_std/lip_mean.npy")
+RHM = np.load(KAGGLE_DATA_DIR / 'irohith_tfrecords' / "mean_std/rh_mean.npy")
+LHM = np.load(KAGGLE_DATA_DIR / 'irohith_tfrecords' / "mean_std/lh_mean.npy")
+RPM = np.load(KAGGLE_DATA_DIR / 'irohith_tfrecords' / "mean_std/rp_mean.npy")
+LPM = np.load(KAGGLE_DATA_DIR / 'irohith_tfrecords' / "mean_std/lp_mean.npy")
+LIPM = np.load(KAGGLE_DATA_DIR / 'irohith_tfrecords' / "mean_std/lip_mean.npy")
 
-RHS = np.load(DATA_DIR / "mean_std/rh_std.npy")
-LHS = np.load(DATA_DIR / "mean_std/lh_std.npy")
-RPS = np.load(DATA_DIR / "mean_std/rp_std.npy")
-LPS = np.load(DATA_DIR / "mean_std/lp_std.npy")
-LIPS = np.load(DATA_DIR / "mean_std/lip_std.npy")
+RHS = np.load(KAGGLE_DATA_DIR / 'irohith_tfrecords' / "mean_std/rh_std.npy")
+LHS = np.load(KAGGLE_DATA_DIR / 'irohith_tfrecords' / "mean_std/lh_std.npy")
+RPS = np.load(KAGGLE_DATA_DIR / 'irohith_tfrecords' / "mean_std/rp_std.npy")
+LPS = np.load(KAGGLE_DATA_DIR / 'irohith_tfrecords' / "mean_std/lp_std.npy")
+LIPS = np.load(KAGGLE_DATA_DIR / 'irohith_tfrecords' / "mean_std/lip_std.npy")
 
 
 def load_relevant_data_subset(pq_path):
@@ -190,15 +197,6 @@ def pre_process0(x):
 @tf.function()
 def pre_process1(lip, rhand, lhand, rpose, lpose):
     # shape: (FRAME_LEN, n_landmarks, 3)
-
-    # ここに追加の特徴量を実装する
-    # rhandの距離
-    # rhandの角度
-    # rhandの速度
-    # rhandの加速度
-    # rhandの角速度
-    # rhandの角加速度
-
     lip = (resize_pad(lip) - LIPM) / LIPS
     rhand = (resize_pad(rhand) - RHM) / RHS
     lhand = (resize_pad(lhand) - LHM) / LHS
@@ -246,14 +244,10 @@ def pre_process_fn(lip, rhand, lhand, rpose, lpose, phrase):
     return pre_process1(lip, rhand, lhand, rpose, lpose), phrase
 
 
-tffiles = [str(DATA_DIR / f"tfds/{file_id}.tfrecord")
+tffiles = [str(KAGGLE_DATA_DIR / 'irohith_tfrecords' / f"tfds/{file_id}.tfrecord")
            for file_id in df.file_id.unique()]
-
-
-kf = KFold(n_splits=N_FOLDS, shuffle=True, random_state=SEED).split(tffiles)
-for fold, (train_indices, valid_indices) in enumerate(kf):
-    if fold == FOLD:
-        break
+tffiles_raw = [str(KAGGLE_DATA_DIR / 'create_tfrecords' / f"tfds/{file_id}.tfrecord")
+               for file_id in df.file_id.unique()]
 
 train_batch_size = 32
 val_batch_size = 32
@@ -265,11 +259,11 @@ if DEBUG:
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(val_batch_size).prefetch(tf.data.AUTOTUNE)
     valid_pd_ids = [int(Path(path_str).stem) for path_str in tffiles[1:2]]
 else:
-    train_dataset = tf.data.TFRecordDataset([tffiles[i] for i in train_indices.tolist()]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
+    train_dataset = tf.data.TFRecordDataset(tffiles[1:]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(train_batch_size).prefetch(tf.data.AUTOTUNE)
-    val_dataset = tf.data.TFRecordDataset([tffiles[i] for i in valid_indices.tolist()]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
+    val_dataset = tf.data.TFRecordDataset([tffiles_raw[:1]]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(val_batch_size).prefetch(tf.data.AUTOTUNE)
-    valid_pd_ids = [int(Path(tffiles[i]).stem) for i in valid_indices.tolist()]
+    valid_pd_ids = [int(Path(tffiles[0]).stem)]
 
 batch = next(iter(val_dataset))
 print(batch[0].shape, batch[1].shape)
@@ -519,17 +513,6 @@ def decode_batch_predictions(pred):
 # A callback class to output a few transcriptions during training
 
 
-if DEBUG:
-    N_EPOCHS = 2
-    N_WARMUP_EPOCHS = 0
-else:
-    N_EPOCHS = 50
-    N_WARMUP_EPOCHS = 10
-LR_MAX = 1e-3
-WD_RATIO = 0.05
-WARMUP_METHOD = "exp"
-
-
 class CallbackEval(tf.keras.callbacks.Callback):
     """Displays a batch of outputs after every epoch."""
 
@@ -543,10 +526,13 @@ class CallbackEval(tf.keras.callbacks.Callback):
         else:
             self.best_norm_ld = -1e9
             self.best_norm_ld_epoch = 0
-            self.start_epoch = 0
+            self.start_epoch = 1
+        self.valid_result_df = None
+        if RESTART and (SAVE_DIR / "valid_result.csv").exists():
+            self.valid_result_df = pd.read_csv(SAVE_DIR / "valid_result.csv")
 
     def on_epoch_end(self, epoch: int, logs=None):
-        epoch = epoch + self.start_epoch + 1
+        epoch = epoch + self.start_epoch
 
         model.save_weights(SAVE_DIR / "model.h5")
         valid_accuracy = AverageMeter()
@@ -577,8 +563,13 @@ class CallbackEval(tf.keras.callbacks.Callback):
                 valid_accuracy=f"{valid_accuracy.avg:.4f}",
                 valid_norm_ld=f"{valid_norm_ld.avg:.4f}"
             )
-        for i in range(16):
-            print(f"Target / Predict: {targets[i]} / {predictions[i]}")
+        # for i in range(16):
+        #     print(f"Target / Predict: {targets[i]} / {predictions[i]}")
+
+        if self.valid_result_df is None:
+            self.valid_result_df = pd.DataFrame(targets, columns=["target"])
+        self.valid_result_df[f"pred_epoch{epoch}"] = predictions
+        self.valid_result_df.to_csv(SAVE_DIR / "valid_result.csv", index=False)
 
         update_flag = False
         if valid_norm_ld.avg > self.best_norm_ld:
@@ -610,47 +601,6 @@ def lrfn(current_step, num_warmup_steps, lr_max, num_cycles=0.50, num_training_s
         return max(0.0, 0.5 * (1.0 + math.cos(math.pi * float(num_cycles) * 2.0 * progress))) * lr_max
 
 
-def plot_lr_schedule(lr_schedule, epochs):
-    fig = plt.figure(figsize=(20, 10))
-    plt.plot([None] + lr_schedule + [None])
-    # X Labels
-    x = np.arange(1, epochs + 1)
-    x_axis_labels = [i if epochs <= 40 or i %
-                     5 == 0 or i == 1 else None for i in range(1, epochs + 1)]
-    plt.xlim([1, epochs])
-    # set tick step to 1 and let x axis start at 1
-    plt.xticks(x, x_axis_labels)
-
-    # Increase y-limit for better readability
-    plt.ylim([0, max(lr_schedule) * 1.1])
-
-    # Title
-    schedule_info = f'start: {lr_schedule[0]:.1E}, max: {max(lr_schedule):.1E}, final: {lr_schedule[-1]:.1E}'
-    plt.title(f'Step Learning Rate Schedule, {schedule_info}', size=18, pad=12)
-
-    # Plot Learning Rates
-    for x, val in enumerate(lr_schedule):
-        if epochs <= 40 or x % 5 == 0 or x is epochs - 1:
-            if x < len(lr_schedule) - 1:
-                if lr_schedule[x - 1] < val:
-                    ha = 'right'
-                else:
-                    ha = 'left'
-            elif x == 0:
-                ha = 'right'
-            else:
-                ha = 'left'
-            plt.plot(x + 1, val, 'o', color='black')
-            offset_y = (max(lr_schedule) - min(lr_schedule)) * 0.02
-            plt.annotate(f'{val:.1E}', xy=(
-                x + 1, val + offset_y), size=12, ha=ha)
-
-    plt.xlabel('Epoch', size=16, labelpad=5)
-    plt.ylabel('Learning Rate', size=16, labelpad=5)
-    plt.grid()
-    plt.show()
-
-
 class WeightDecayCallback(tf.keras.callbacks.Callback):
     def __init__(self, wd_ratio=WD_RATIO):
         self.step_counter = 0
@@ -669,18 +619,22 @@ if RESTART:
     }
     # load best model
     model.load_weights(SAVE_DIR / "best_model.h5")
-    training_epochs = N_EPOCHS - restart_epoch + 1
+    training_epochs = N_EPOCHS - best_epoch
 
     validation_callback = CallbackEval(val_dataset, restart_info)
 
     # Learning rate for encoder
     LR_SCHEDULE = [lrfn(step, num_warmup_steps=N_WARMUP_EPOCHS,
                         lr_max=LR_MAX, num_cycles=0.50) for step in range(N_EPOCHS)][best_epoch:]
-    lr_callback = tf.keras.callbacks.LearningRateScheduler(
-        lambda step: LR_SCHEDULE[step], verbose=0)
 else:
     training_epochs = N_EPOCHS
     validation_callback = CallbackEval(val_dataset)
+    LR_SCHEDULE = [lrfn(step, num_warmup_steps=N_WARMUP_EPOCHS,
+                        lr_max=LR_MAX, num_cycles=0.50) for step in range(N_EPOCHS)]
+
+lr_callback = tf.keras.callbacks.LearningRateScheduler(
+    lambda step: LR_SCHEDULE[step], verbose=0)
+
 
 history = model.fit(
     train_dataset,
