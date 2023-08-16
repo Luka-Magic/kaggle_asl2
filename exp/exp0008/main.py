@@ -131,10 +131,10 @@ POSE_LINE_IDX_I = [POSE_LINE_IDX[i][0] for i in range(len(POSE_LINE_IDX))]
 POSE_LINE_IDX_J = [POSE_LINE_IDX[i][1] for i in range(len(POSE_LINE_IDX))]
 
 DATA_INDICES = [
-    0, 1, 2,
-    7, 8, 9,
-    14, 15, 16,
-    21, 22, 23,
+    0,
+    7,
+    14,
+    21,
 ]
 
 MEAN_LIST = []
@@ -352,10 +352,10 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
     #                  constant_values=float("NaN"))
 
     datas = [
-        lip, lip_dist, lip_angle,
-        rhand, rhand_dist, rhand_angle,
-        rpose, rpose_dist, rpose_angle,
-        lpose, lpose_dist, lpose_angle,
+        lip,
+        rhand,
+        rpose,
+        lpose,
     ]
 
     for i in range(len(datas)):
@@ -402,7 +402,7 @@ def decode_fn(record_bytes):
     n_landmark_list = [d.shape[1] for d in [lip, rhand, lhand, rpose, lpose]]
     # 長さが一緒じゃないかもしれない
     data = tf.concat([lip, rhand, lhand, rpose, lpose], axis=1)
-    data = augment_fn(data)
+    # data = augment_fn(data)
     lip, rhand, lhand, rpose, lpose = tf.split(
         data, n_landmark_list, axis=1)
 
