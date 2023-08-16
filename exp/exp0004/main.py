@@ -248,7 +248,7 @@ tffiles = [str(KAGGLE_DATA_DIR / 'irohith_tfrecords' / f"tfds/{file_id}.tfrecord
            for file_id in df.file_id.unique()]
 tffiles_raw = [str(KAGGLE_DATA_DIR / 'create_tfrecords' / f"tfds/{file_id}.tfrecord")
                for file_id in df.file_id.unique()]
-print(tffiles_raw[:1])
+
 train_batch_size = 32
 val_batch_size = 32
 
@@ -261,7 +261,7 @@ if DEBUG:
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(1).prefetch(tf.data.AUTOTUNE)
     valid_pd_ids = [int(Path(path_str).stem) for path_str in tffiles[1:2]]
 else:
-    train_dataset = tf.data.TFRecordDataset(tffiles[1:2]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
+    train_dataset = tf.data.TFRecordDataset(tffiles[1:]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(train_batch_size).prefetch(tf.data.AUTOTUNE)
     val_dataset = tf.data.TFRecordDataset([tffiles_raw[:1]]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(val_batch_size).prefetch(tf.data.AUTOTUNE)
