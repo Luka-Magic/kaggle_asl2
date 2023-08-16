@@ -21,8 +21,6 @@ DEBUG = False
 RESTART = False
 # best_epoch = 0
 # best_score = 0
-
-# restart_epoch = best_epoch + 1
 # ====================================================
 
 N_FOLDS = 4
@@ -702,13 +700,13 @@ class CallbackEval(tf.keras.callbacks.Callback):
         else:
             self.best_norm_ld = -1e9
             self.best_norm_ld_epoch = 0
-            self.start_epoch = 0
+            self.start_epoch = 1
         self.valid_result_df = None
         if RESTART and (SAVE_DIR / "valid_result.csv").exists():
             self.valid_result_df = pd.read_csv(SAVE_DIR / "valid_result.csv")
 
     def on_epoch_end(self, epoch: int, logs=None):
-        epoch = epoch + self.start_epoch + 1
+        epoch = epoch + self.start_epoch
 
         model.save_weights(SAVE_DIR / "model.h5")
         valid_accuracy = AverageMeter()
@@ -795,7 +793,7 @@ if RESTART:
     }
     # load best model
     model.load_weights(SAVE_DIR / "best_model.h5")
-    training_epochs = N_EPOCHS - restart_epoch + 1
+    training_epochs = N_EPOCHS - best_epoch
 
     validation_callback = CallbackEval(val_dataset, restart_info)
 

@@ -801,16 +801,17 @@ else:
 
 lr_callback = tf.keras.callbacks.LearningRateScheduler(
     lambda step: LR_SCHEDULE[step], verbose=0)
-history = model.fit(
-    train_dataset,
-    validation_data=val_dataset,
-    epochs=training_epochs,
-    callbacks=[
-        validation_callback,
-        lr_callback,
-        WeightDecayCallback(),
-    ]
-)
+
+# history = model.fit(
+#     train_dataset,
+#     validation_data=val_dataset,
+#     epochs=training_epochs,
+#     callbacks=[
+#         validation_callback,
+#         lr_callback,
+#         WeightDecayCallback(),
+#     ]
+# )
 
 # load best model
 model.load_weights(SAVE_DIR / "best_model.h5")
@@ -848,7 +849,9 @@ tflitemodel_base(frames)["outputs"].shape
 keras_model_converter = tf.lite.TFLiteConverter.from_keras_model(
     tflitemodel_base)
 keras_model_converter.target_spec.supported_ops = [
-    tf.lite.OpsSet.TFLITE_BUILTINS]  # , tf.lite.OpsSet.SELECT_TF_OPS]
+    tf.lite.OpsSet.TFLITE_BUILTINS,
+    tf.lite.OpsSet.SELECT_TF_OPS
+]
 keras_model_converter.optimizations = [tf.lite.Optimize.DEFAULT]
 keras_model_converter.target_spec.supported_types = [tf.float16]
 
