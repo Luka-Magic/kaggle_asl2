@@ -761,6 +761,7 @@ class CallbackEval(tf.keras.callbacks.Callback):
             update_flag = True
         print('-*-' * 30)
         print(f'【EPOCH {epoch}/{N_EPOCHS}】')
+        print(f'    n_data: {len(predictions)}')
         print(f'    valid_accuracy: {valid_accuracy.avg:.4f}')
         print(
             f'    valid_norm_ld: {valid_norm_ld.avg:.4f}{"*" if update_flag else ""}')
