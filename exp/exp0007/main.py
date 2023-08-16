@@ -20,8 +20,8 @@ warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
 RESTART = True
-best_epoch = 14
-best_score = 0.8158
+best_epoch = 18
+best_score = 0.8460
 # ====================================================
 
 N_FOLDS = 4

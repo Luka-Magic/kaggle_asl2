@@ -31,9 +31,9 @@ if DEBUG:
     N_EPOCHS = 2
     N_WARMUP_EPOCHS = 0
 else:
-    N_EPOCHS = 50
-    N_WARMUP_EPOCHS = 10
-LR_MAX = 1e-3
+    N_EPOCHS = 20
+    N_WARMUP_EPOCHS = 4
+LR_MAX = 5e-3
 WD_RATIO = 0.05
 WARMUP_METHOD = "exp"
 
@@ -354,6 +354,13 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
         elif len(datas[i].shape) == 2:
             datas[i] = resize_pad(datas[i][..., tf.newaxis])[:, :, 0]
         datas[i] = (datas[i] - MEAN_LIST[i]) / STD_LIST[i]
+
+    datas = datas[
+        0, 1,
+        7, 8, 9, 10, 11, 12, 13,
+        14, 15, 16, 17, 18, 19, 20,
+        21, 22, 23, 24, 25, 26, 27,
+    ]
 
     x = tf.concat([d for d in datas if len(tf.shape(d)) == 3], axis=1)
     x = x[:, :, :2]  # x, yだけ使う
