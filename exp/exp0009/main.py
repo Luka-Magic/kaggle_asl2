@@ -13,8 +13,7 @@ from Levenshtein import distance
 import zipfile
 from utils import AverageMeter, validation_metrics, seed_everything
 from sklearn.model_selection import KFold
-import sys
-
+from augment import augment_fn
 import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
@@ -25,7 +24,7 @@ RESTART = False
 # ====================================================
 
 N_FOLDS = 4
-FOLD = int(sys.argv[1])
+FOLD = 0
 SEED = 77
 
 if DEBUG:
@@ -37,15 +36,13 @@ else:
 LR_MAX = 5e-3
 WD_RATIO = 0.05
 WARMUP_METHOD = "exp"
-FRAME_LEN = 128
-MAX_PHRASE_LENGTH = 64
-
 
 EXP_PATH = Path.cwd()
 ROOT_DIR = EXP_PATH.parents[2]
 exp_name = EXP_PATH.name
 RAW_DATA_DIR = ROOT_DIR / 'data' / 'original_data'
 DATA_DIR = ROOT_DIR / 'data' / 'kaggle_dataset' / 'irohith_tfrecords'
+CREATE_DATA_DIR = ROOT_DIR / 'data' / 'created_data'
 SAVE_DIR = ROOT_DIR / 'outputs' / exp_name / f'fold{FOLD}'
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -80,6 +77,8 @@ Z = [f'z_right_hand_{i}' for i in range(21)] + [f'z_left_hand_{i}' for i in rang
     21)] + [f'z_pose_{i}' for i in POSE] + [f'z_face_{i}' for i in LIP]
 
 SEL_COLS = X + Y + Z
+FRAME_LEN = 128
+MAX_PHRASE_LENGTH = 64
 
 LIP_IDX_X = [i for i, col in enumerate(
     SEL_COLS) if "face" in col and "x" in col]
@@ -114,17 +113,41 @@ RPOSE_IDX_Z = [i for i, col in enumerate(
 LPOSE_IDX_Z = [i for i, col in enumerate(
     SEL_COLS) if "pose" in col and int(col[-2:]) in LPOSE and "z" in col]
 
-RHM = np.load(DATA_DIR / "mean_std/rh_mean.npy")
-LHM = np.load(DATA_DIR / "mean_std/lh_mean.npy")
-RPM = np.load(DATA_DIR / "mean_std/rp_mean.npy")
-LPM = np.load(DATA_DIR / "mean_std/lp_mean.npy")
-LIPM = np.load(DATA_DIR / "mean_std/lip_mean.npy")
+LIPS_LINE_IDX = [[0, 10], [21, 30], [22, 31], [23, 32], [
+    24, 33], [25, 34], [26, 35], [27, 36], [28, 37], [29, 38]]
+LIP_LINE_IDX_I = [LIPS_LINE_IDX[i][0] for i in range(len(LIPS_LINE_IDX))]
+LIP_LINE_IDX_J = [LIPS_LINE_IDX[i][1] for i in range(len(LIPS_LINE_IDX))]
 
-RHS = np.load(DATA_DIR / "mean_std/rh_std.npy")
-LHS = np.load(DATA_DIR / "mean_std/lh_std.npy")
-RPS = np.load(DATA_DIR / "mean_std/rp_std.npy")
-LPS = np.load(DATA_DIR / "mean_std/lp_std.npy")
-LIPS = np.load(DATA_DIR / "mean_std/lip_std.npy")
+HAND_LINE_IDX = [[0, 1], [0, 5], [0, 17], [1, 2], [2, 3], [3, 4], [5, 6], [5, 9], [6, 7], [7, 8], [
+    9, 10], [9, 13], [10, 11], [11, 12], [13, 14], [13, 17], [14, 15], [15, 16], [17, 18], [18, 19], [19, 20]]
+HAND_LINE_ADD_IDX = [[2, 4], [2, 8], [2, 12], [2, 16],
+                     [2, 20], [4, 8], [8, 12], [12, 16], [16, 20]]
+HAND_LINE_IDX += HAND_LINE_ADD_IDX
+HAND_LINE_IDX_I = [HAND_LINE_IDX[i][0] for i in range(len(HAND_LINE_IDX))]
+HAND_LINE_IDX_J = [HAND_LINE_IDX[i][1] for i in range(len(HAND_LINE_IDX))]
+
+POSE_LINE_IDX = [[0, 1], [1, 2], [2, 3], [3, 4]]
+POSE_LINE_IDX_I = [POSE_LINE_IDX[i][0] for i in range(len(POSE_LINE_IDX))]
+POSE_LINE_IDX_J = [POSE_LINE_IDX[i][1] for i in range(len(POSE_LINE_IDX))]
+
+DATA_INDICES = [
+    0,
+    7,
+    14,
+    21,
+]
+
+MEAN_LIST = []
+STD_LIST = []
+for pos_type in ['lip', 'rh', 'rp', 'lp']:
+    for point_type in ['_', '_dist_', '_angle_', '_v_dist_', '_v_angle_', '_a_', '_w_']:
+        MEAN_LIST += [np.load(CREATE_DATA_DIR / 'mean_std' /
+                              f'{pos_type}{point_type}mean.npy')]
+        STD_LIST += [np.load(CREATE_DATA_DIR / 'mean_std' /
+                             f'{pos_type}{point_type}std.npy')]
+
+MEAN_LIST = [MEAN_LIST[i] for i in DATA_INDICES]
+STD_LIST = [STD_LIST[i] for i in DATA_INDICES]
 
 
 def load_relevant_data_subset(pq_path):
@@ -145,8 +168,12 @@ phrase = str(df.loc[df.sequence_id == seq_id].phrase.iloc[0])
 @tf.function()
 def resize_pad(x):
     if tf.shape(x)[0] < FRAME_LEN:
-        x = tf.pad(x, ([[0, FRAME_LEN-tf.shape(x)[0]], [0, 0],
-                   [0, 0]]), constant_values=float("NaN"))
+        if len(tf.shape(x)) == 2:
+            x = tf.pad(x, ([[0, FRAME_LEN-tf.shape(x)[0]], [0, 0]]),
+                       constant_values=float("NaN"))
+        else:
+            x = tf.pad(x, ([[0, FRAME_LEN-tf.shape(x)[0]], [0, 0],
+                            [0, 0]]), constant_values=float("NaN"))
     else:
         x = tf.image.resize(x, (FRAME_LEN, tf.shape(x)[1]))
     return x
@@ -200,17 +227,149 @@ def pre_process0(x):
 
 @tf.function()
 def pre_process1(lip, rhand, lhand, rpose, lpose):
-    # shape: (FRAME_LEN, n_landmarks, 3)
-    lip = (resize_pad(lip) - LIPM) / LIPS
-    rhand = (resize_pad(rhand) - RHM) / RHS
-    lhand = (resize_pad(lhand) - LHM) / LHS
-    rpose = (resize_pad(rpose) - RPM) / RPS
-    lpose = (resize_pad(lpose) - LPM) / LPS
 
-    x = tf.concat([lip, rhand, lhand, rpose, lpose], axis=1)
+    n_nan_rhand = tf.reduce_sum(
+        tf.cast(tf.math.is_nan(rhand), tf.int32))
+    n_nan_lhand = tf.reduce_sum(
+        tf.cast(tf.math.is_nan(lhand), tf.int32))
+
+    def invert_x(x):
+        x, y, z = tf.unstack(x, axis=-1)
+        x = 1-x
+        return tf.stack([x, y, z], -1)
+
+    if n_nan_rhand > n_nan_lhand:
+        lip = invert_x(lip)
+        rhand = invert_x(lhand)
+        lhand = invert_x(rhand)
+        rpose = invert_x(lpose)
+        lpose = invert_x(rpose)
+
+    # shape: (FRAME_LEN, n_landmarks, 3)
+    # 距離
+    # rhand_diff_i = tf.gather(rhand, HAND_LINE_IDX_I, axis=1)
+    # rhand_diff_j = tf.gather(rhand, HAND_LINE_IDX_J, axis=1)
+    # rhand_diff = rhand_diff_j - rhand_diff_i  # shape: (FRAME_LEN, 21, 3)
+    # rhand_dist = tf.math.sqrt(tf.math.square(
+    #     rhand_diff[:, :, 0]) + tf.math.square(rhand_diff[:, :, 1]))
+
+    # lip_diff_i = tf.gather(lip, LIP_LINE_IDX_I, axis=1)
+    # lip_diff_j = tf.gather(lip, LIP_LINE_IDX_J, axis=1)
+    # lip_diff = lip_diff_j - lip_diff_i  # shape: (FRAME_LEN, 40, 3)
+    # lip_dist = tf.math.sqrt(tf.math.square(
+    #     lip_diff[:, :, 0]) + tf.math.square(lip_diff[:, :, 1]))
+
+    # rpose_diff_i = tf.gather(rpose, POSE_LINE_IDX_I, axis=1)
+    # rpose_diff_j = tf.gather(rpose, POSE_LINE_IDX_J, axis=1)
+    # rpose_diff = rpose_diff_j - rpose_diff_i  # shape: (FRAME_LEN, 5, 3)
+    # rpose_dist = tf.math.sqrt(tf.math.square(
+    #     rpose_diff[:, :, 0]) + tf.math.square(rpose_diff[:, :, 1]))
+    # lpose_diff_i = tf.gather(lpose, POSE_LINE_IDX_I, axis=1)
+    # lpose_diff_j = tf.gather(lpose, POSE_LINE_IDX_J, axis=1)
+    # lpose_diff = lpose_diff_j - lpose_diff_i  # shape: (FRAME_LEN, 5, 3)
+    # lpose_dist = tf.math.sqrt(tf.math.square(
+    #     lpose_diff[:, :, 0]) + tf.math.square(lpose_diff[:, :, 1]))
+    # # 角度
+    # rhand_sin = rhand_diff[:, :, 1] / (rhand_dist + 1e-8)
+    # rhand_cos = rhand_diff[:, :, 0] / (rhand_dist + 1e-8)
+    # rhand_angle = tf.math.atan2(rhand_sin, rhand_cos) / np.pi
+
+    # lip_sin = lip_diff[:, :, 1] / (lip_dist + 1e-8)
+    # lip_cos = lip_diff[:, :, 0] / (lip_dist + 1e-8)
+    # lip_angle = tf.math.atan2(lip_sin, lip_cos) / np.pi
+
+    # rpose_sin = rpose_diff[:, :, 1] / (rpose_dist + 1e-8)
+    # rpose_cos = rpose_diff[:, :, 0] / (rpose_dist + 1e-8)
+    # rpose_angle = tf.math.atan2(rpose_sin, rpose_cos) / np.pi
+    # lpose_sin = lpose_diff[:, :, 1] / (lpose_dist + 1e-8)
+    # lpose_cos = lpose_diff[:, :, 0] / (lpose_dist + 1e-8)
+    # lpose_angle = tf.math.atan2(lpose_sin, lpose_cos) / np.pi
+
+    # 速度
+    # rhand_v = rhand[1:] - rhand[:-1]
+    # rhand_v = tf.pad(rhand_v, ([[1, 0], [0, 0], [0, 0]]),
+    #                  constant_values=float("NaN"))
+    # rhand_v_dist = tf.math.sqrt(tf.math.square(
+    #     rhand_v[:, :, 0]) + tf.math.square(rhand_v[:, :, 1]))
+    # rhand_v_sin = rhand_v[:, :, 1] / (rhand_v_dist + 1e-8)
+    # rhand_v_cos = rhand_v[:, :, 0] / (rhand_v_dist + 1e-8)
+    # rhand_v_angle = tf.math.atan2(
+    #     rhand_v_sin, rhand_v_cos) / np.pi
+
+    # lip_v = lip[1:] - lip[:-1]
+    # lip_v = tf.pad(lip_v, ([[1, 0], [0, 0], [0, 0]]),
+    #                constant_values=float("NaN"))
+    # lip_v_dist = tf.math.sqrt(tf.math.square(
+    #     lip_v[:, :, 0]) + tf.math.square(lip_v[:, :, 1]))
+    # lip_v_sin = lip_v[:, :, 1] / (lip_v_dist + 1e-8)
+    # lip_v_cos = lip_v[:, :, 0] / (lip_v_dist + 1e-8)
+    # lip_v_angle = tf.math.atan2(lip_v_sin, lip_v_cos) / np.pi
+
+    # rpose_v = rpose[1:] - rpose[:-1]
+    # rpose_v = tf.pad(rpose_v, ([[1, 0], [0, 0], [0, 0]]),
+    #                  constant_values=float("NaN"))
+    # rpose_v_dist = tf.math.sqrt(tf.math.square(
+    #     rpose_v[:, :, 0]) + tf.math.square(rpose_v[:, :, 1]))
+    # rpose_v_sin = rpose_v[:, :, 1] / (rpose_v_dist + 1e-8)
+    # rpose_v_cos = rpose_v[:, :, 0] / (rpose_v_dist + 1e-8)
+    # rpose_v_angle = tf.math.atan2(
+    #     rpose_v_sin, rpose_v_cos) / np.pi
+    # lpose_v = lpose[1:] - lpose[:-1]
+    # lpose_v = tf.pad(lpose_v, ([[1, 0], [0, 0], [0, 0]]),
+    #                  constant_values=float("NaN"))
+    # lpose_v_dist = tf.math.sqrt(tf.math.square(
+    #     lpose_v[:, :, 0]) + tf.math.square(lpose_v[:, :, 1]))
+    # lpose_v_sin = lpose_v[:, :, 1] / (lpose_v_dist + 1e-8)
+    # lpose_v_cos = lpose_v[:, :, 0] / (lpose_v_dist + 1e-8)
+    # lpose_v_angle = tf.math.atan2(
+    #     lpose_v_sin, lpose_v_cos) / np.pi
+
+    # # 加速度
+    # rhand_a = rhand_v[1:] - rhand_v[:-1]
+    # rhand_a = tf.pad(rhand_a, ([[1, 0], [0, 0], [0, 0]]),
+    #                  constant_values=float("NaN"))
+    # lip_a = lip_v[1:] - lip_v[:-1]
+    # lip_a = tf.pad(lip_a, ([[1, 0], [0, 0], [0, 0]]),
+    #                constant_values=float("NaN"))
+    # rpose_a = rpose_v[1:] - rpose_v[:-1]
+    # rpose_a = tf.pad(rpose_a, ([[1, 0], [0, 0], [0, 0]]),
+    #                  constant_values=float("NaN"))
+    # lpose_a = lpose_v[1:] - lpose_v[:-1]
+    # lpose_a = tf.pad(lpose_a, ([[1, 0], [0, 0], [0, 0]]),
+    #                  constant_values=float("NaN"))
+    # # rhandの角速度
+    # rhand_w = rhand_angle[1:] - rhand_angle[:-1]
+    # rhand_w = tf.pad(rhand_w, ([[1, 0], [0, 0]]),
+    #                  constant_values=float("NaN"))
+    # lip_w = lip_angle[1:] - lip_angle[:-1]
+    # lip_w = tf.pad(lip_w, ([[1, 0], [0, 0]]),
+    #                constant_values=float("NaN"))
+    # rpose_w = rpose_angle[1:] - rpose_angle[:-1]
+    # rpose_w = tf.pad(rpose_w, ([[1, 0], [0, 0]]),
+    #                  constant_values=float("NaN"))
+    # lpose_w = lpose_angle[1:] - lpose_angle[:-1]
+    # lpose_w = tf.pad(lpose_w, ([[1, 0], [0, 0]]),
+    #                  constant_values=float("NaN"))
+
+    datas = [
+        lip,
+        rhand,
+        rpose,
+        lpose,
+    ]
+
+    for i in range(len(datas)):
+        if len(datas[i].shape) == 3:
+            datas[i] = resize_pad(datas[i])
+        elif len(datas[i].shape) == 2:
+            datas[i] = resize_pad(datas[i][..., tf.newaxis])[:, :, 0]
+        datas[i] = (datas[i] - MEAN_LIST[i]) / STD_LIST[i]
+
+    x = tf.concat([d for d in datas if len(tf.shape(d)) == 3], axis=1)
     x = x[:, :, :2]  # x, yだけ使う
     s = tf.shape(x)
     x = tf.reshape(x, (s[0], s[1]*s[2]))
+    # x = tf.concat([x] + [d for d in datas if len(tf.shape(d)) == 2], axis=1)
     x = tf.where(tf.math.is_nan(x), 0.0, x)
     return x
 
@@ -239,6 +398,14 @@ def decode_fn(record_bytes):
     lpose = tf.reshape(tf.sparse.to_dense(x["lpose"]), (-1, 5, 3))
     phrase = tf.sparse.to_dense(x["phrase"])
 
+    # # augmentation
+    # n_landmark_list = [d.shape[1] for d in [lip, rhand, lhand, rpose, lpose]]
+    # # 長さが一緒じゃないかもしれない
+    # data = tf.concat([lip, rhand, lhand, rpose, lpose], axis=1)
+    # data = augment_fn(data)
+    # lip, rhand, lhand, rpose, lpose = tf.split(
+    #     data, n_landmark_list, axis=1)
+
     return lip, rhand, lhand, rpose, lpose, phrase
 
 
@@ -265,19 +432,15 @@ if DEBUG:
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(train_batch_size).prefetch(tf.data.AUTOTUNE)
     val_dataset = tf.data.TFRecordDataset(tffiles[1:2]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(val_batch_size).prefetch(tf.data.AUTOTUNE)
-    sample_dataset = tf.data.TFRecordDataset([tffiles[0:1]]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
-        pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(1).prefetch(tf.data.AUTOTUNE)
     valid_pd_ids = [int(Path(path_str).stem) for path_str in tffiles[1:2]]
 else:
     train_dataset = tf.data.TFRecordDataset([tffiles[i] for i in train_indices.tolist()]).prefetch(tf.data.AUTOTUNE).shuffle(5000).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(train_batch_size).prefetch(tf.data.AUTOTUNE)
     val_dataset = tf.data.TFRecordDataset([tffiles[i] for i in valid_indices.tolist()]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
         pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(val_batch_size).prefetch(tf.data.AUTOTUNE)
-    sample_dataset = tf.data.TFRecordDataset([tffiles[0:1]]).prefetch(tf.data.AUTOTUNE).map(decode_fn, num_parallel_calls=tf.data.AUTOTUNE).map(
-        pre_process_fn, num_parallel_calls=tf.data.AUTOTUNE).batch(1).prefetch(tf.data.AUTOTUNE)
     valid_pd_ids = [int(Path(tffiles[i]).stem) for i in valid_indices.tolist()]
 
-batch = next(iter(sample_dataset))
+batch = next(iter(val_dataset))
 print(batch[0].shape, batch[1].shape)
 
 
@@ -461,10 +624,19 @@ def CTCLoss(labels, logits):
     return loss
 
 
+n_embed_layers = 1
+
+
 def get_model(dim=384, num_blocks=6, drop_rate=0.4):
     inp = tf.keras.Input(INPUT_SHAPE)
     x = tf.keras.layers.Masking(mask_value=0.0)(inp)
-    x = tf.keras.layers.Dense(dim, use_bias=False, name='stem_conv')(x)
+    if n_embed_layers == 2:
+        x = tf.keras.layers.Dense(dim, name=f'stem_conv_1', use_bias=False,
+                                  kernel_initializer=tf.keras.initializers.glorot_uniform, activation=tf.keras.activations.gelu),
+        x = tf.keras.layers.Dense(
+            dim, name=f'stem_conv_2', use_bias=False, kernel_initializer=tf.keras.initializers.he_uniform),
+    else:
+        x = tf.keras.layers.Dense(dim, use_bias=False, name='stem_conv')(x)
     pe = tf.cast(positional_encoding(INPUT_SHAPE[0], dim), dtype=x.dtype)
     x = x + pe
     x = tf.keras.layers.BatchNormalization(momentum=0.95, name='stem_bn')(x)
@@ -591,7 +763,6 @@ class CallbackEval(tf.keras.callbacks.Callback):
             update_flag = True
         print('-*-' * 30)
         print(f'【EPOCH {epoch}/{N_EPOCHS}】')
-        print(f'    n_valid_data: {len(targets)}')
         print(f'    valid_accuracy: {valid_accuracy.avg:.4f}')
         print(
             f'    valid_norm_ld: {valid_norm_ld.avg:.4f}{"*" if update_flag else ""}')
