@@ -247,43 +247,43 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
 
     # shape: (FRAME_LEN, n_landmarks, 3)
     # 距離
-    rhand_diff_i = tf.gather(rhand, HAND_LINE_IDX_I, axis=1)
-    rhand_diff_j = tf.gather(rhand, HAND_LINE_IDX_J, axis=1)
-    rhand_diff = rhand_diff_j - rhand_diff_i  # shape: (FRAME_LEN, 21, 3)
-    rhand_dist = tf.math.sqrt(tf.math.square(
-        rhand_diff[:, :, 0]) + tf.math.square(rhand_diff[:, :, 1]))
+    # rhand_diff_i = tf.gather(rhand, HAND_LINE_IDX_I, axis=1)
+    # rhand_diff_j = tf.gather(rhand, HAND_LINE_IDX_J, axis=1)
+    # rhand_diff = rhand_diff_j - rhand_diff_i  # shape: (FRAME_LEN, 21, 3)
+    # rhand_dist = tf.math.sqrt(tf.math.square(
+    #     rhand_diff[:, :, 0]) + tf.math.square(rhand_diff[:, :, 1]))
 
-    lip_diff_i = tf.gather(lip, LIP_LINE_IDX_I, axis=1)
-    lip_diff_j = tf.gather(lip, LIP_LINE_IDX_J, axis=1)
-    lip_diff = lip_diff_j - lip_diff_i  # shape: (FRAME_LEN, 40, 3)
-    lip_dist = tf.math.sqrt(tf.math.square(
-        lip_diff[:, :, 0]) + tf.math.square(lip_diff[:, :, 1]))
+    # lip_diff_i = tf.gather(lip, LIP_LINE_IDX_I, axis=1)
+    # lip_diff_j = tf.gather(lip, LIP_LINE_IDX_J, axis=1)
+    # lip_diff = lip_diff_j - lip_diff_i  # shape: (FRAME_LEN, 40, 3)
+    # lip_dist = tf.math.sqrt(tf.math.square(
+    #     lip_diff[:, :, 0]) + tf.math.square(lip_diff[:, :, 1]))
 
-    rpose_diff_i = tf.gather(rpose, POSE_LINE_IDX_I, axis=1)
-    rpose_diff_j = tf.gather(rpose, POSE_LINE_IDX_J, axis=1)
-    rpose_diff = rpose_diff_j - rpose_diff_i  # shape: (FRAME_LEN, 5, 3)
-    rpose_dist = tf.math.sqrt(tf.math.square(
-        rpose_diff[:, :, 0]) + tf.math.square(rpose_diff[:, :, 1]))
-    lpose_diff_i = tf.gather(lpose, POSE_LINE_IDX_I, axis=1)
-    lpose_diff_j = tf.gather(lpose, POSE_LINE_IDX_J, axis=1)
-    lpose_diff = lpose_diff_j - lpose_diff_i  # shape: (FRAME_LEN, 5, 3)
-    lpose_dist = tf.math.sqrt(tf.math.square(
-        lpose_diff[:, :, 0]) + tf.math.square(lpose_diff[:, :, 1]))
-    # 角度
-    rhand_sin = rhand_diff[:, :, 1] / (rhand_dist + 1e-8)
-    rhand_cos = rhand_diff[:, :, 0] / (rhand_dist + 1e-8)
-    rhand_angle = tf.math.atan2(rhand_sin, rhand_cos) / np.pi
+    # rpose_diff_i = tf.gather(rpose, POSE_LINE_IDX_I, axis=1)
+    # rpose_diff_j = tf.gather(rpose, POSE_LINE_IDX_J, axis=1)
+    # rpose_diff = rpose_diff_j - rpose_diff_i  # shape: (FRAME_LEN, 5, 3)
+    # rpose_dist = tf.math.sqrt(tf.math.square(
+    #     rpose_diff[:, :, 0]) + tf.math.square(rpose_diff[:, :, 1]))
+    # lpose_diff_i = tf.gather(lpose, POSE_LINE_IDX_I, axis=1)
+    # lpose_diff_j = tf.gather(lpose, POSE_LINE_IDX_J, axis=1)
+    # lpose_diff = lpose_diff_j - lpose_diff_i  # shape: (FRAME_LEN, 5, 3)
+    # lpose_dist = tf.math.sqrt(tf.math.square(
+    #     lpose_diff[:, :, 0]) + tf.math.square(lpose_diff[:, :, 1]))
+    # # 角度
+    # rhand_sin = rhand_diff[:, :, 1] / (rhand_dist + 1e-8)
+    # rhand_cos = rhand_diff[:, :, 0] / (rhand_dist + 1e-8)
+    # rhand_angle = tf.math.atan2(rhand_sin, rhand_cos) / np.pi
 
-    lip_sin = lip_diff[:, :, 1] / (lip_dist + 1e-8)
-    lip_cos = lip_diff[:, :, 0] / (lip_dist + 1e-8)
-    lip_angle = tf.math.atan2(lip_sin, lip_cos) / np.pi
+    # lip_sin = lip_diff[:, :, 1] / (lip_dist + 1e-8)
+    # lip_cos = lip_diff[:, :, 0] / (lip_dist + 1e-8)
+    # lip_angle = tf.math.atan2(lip_sin, lip_cos) / np.pi
 
-    rpose_sin = rpose_diff[:, :, 1] / (rpose_dist + 1e-8)
-    rpose_cos = rpose_diff[:, :, 0] / (rpose_dist + 1e-8)
-    rpose_angle = tf.math.atan2(rpose_sin, rpose_cos) / np.pi
-    lpose_sin = lpose_diff[:, :, 1] / (lpose_dist + 1e-8)
-    lpose_cos = lpose_diff[:, :, 0] / (lpose_dist + 1e-8)
-    lpose_angle = tf.math.atan2(lpose_sin, lpose_cos) / np.pi
+    # rpose_sin = rpose_diff[:, :, 1] / (rpose_dist + 1e-8)
+    # rpose_cos = rpose_diff[:, :, 0] / (rpose_dist + 1e-8)
+    # rpose_angle = tf.math.atan2(rpose_sin, rpose_cos) / np.pi
+    # lpose_sin = lpose_diff[:, :, 1] / (lpose_dist + 1e-8)
+    # lpose_cos = lpose_diff[:, :, 0] / (lpose_dist + 1e-8)
+    # lpose_angle = tf.math.atan2(lpose_sin, lpose_cos) / np.pi
 
     # 速度
     # rhand_v = rhand[1:] - rhand[:-1]
@@ -369,7 +369,7 @@ def pre_process1(lip, rhand, lhand, rpose, lpose):
     x = x[:, :, :2]  # x, yだけ使う
     s = tf.shape(x)
     x = tf.reshape(x, (s[0], s[1]*s[2]))
-    x = tf.concat([x] + [d for d in datas if len(tf.shape(d)) == 2], axis=1)
+    # x = tf.concat([x] + [d for d in datas if len(tf.shape(d)) == 2], axis=1)
     x = tf.where(tf.math.is_nan(x), 0.0, x)
     return x
 
@@ -398,13 +398,13 @@ def decode_fn(record_bytes):
     lpose = tf.reshape(tf.sparse.to_dense(x["lpose"]), (-1, 5, 3))
     phrase = tf.sparse.to_dense(x["phrase"])
 
-    # augmentation
-    n_landmark_list = [d.shape[1] for d in [lip, rhand, lhand, rpose, lpose]]
-    # 長さが一緒じゃないかもしれない
-    data = tf.concat([lip, rhand, lhand, rpose, lpose], axis=1)
+    # # augmentation
+    # n_landmark_list = [d.shape[1] for d in [lip, rhand, lhand, rpose, lpose]]
+    # # 長さが一緒じゃないかもしれない
+    # data = tf.concat([lip, rhand, lhand, rpose, lpose], axis=1)
     # data = augment_fn(data)
-    lip, rhand, lhand, rpose, lpose = tf.split(
-        data, n_landmark_list, axis=1)
+    # lip, rhand, lhand, rpose, lpose = tf.split(
+    #     data, n_landmark_list, axis=1)
 
     return lip, rhand, lhand, rpose, lpose, phrase
 
