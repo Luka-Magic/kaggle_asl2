@@ -39,16 +39,16 @@ def temporal_mask(x, size=(0.2, 0.4), mask_value=float('nan')):
     return x
 
 
-def drop_random_frames(x, size=(0.05, 0.1), mask_value=float('nan')):
-    # drop random frames
-    l = tf.shape(x)[0]
-    mask_size = tf.random.uniform((), *size)
-    mask_size = tf.cast(tf.cast(l, tf.float32) * mask_size, tf.int32)
-    # choice random mask_size frames
-    mask_random_frames = np.random.choice(
-        l, l - mask_size, replace=False)
-    x = tf.gather(x, mask_random_frames, axis=0)
-    return x
+# def drop_random_frames(x, size=(0.05, 0.1), mask_value=float('nan')):
+#     # drop random frames
+#     l = tf.shape(x)[0]
+#     mask_size = tf.random.uniform((), *size)
+#     mask_size = tf.cast(tf.cast(l, tf.float32) * mask_size, tf.int32)
+#     # choice random mask_size frames
+#     mask_random_frames = np.random.choice(
+#         int(l), int(l - mask_size), replace=False)
+#     x = tf.gather(x, mask_random_frames, axis=0)
+#     return x
 
 
 def spatial_mask(x, size=(0.2, 0.4), mask_value=float('nan')):
@@ -116,12 +116,18 @@ def spatial_random_affine(xyz,
 
 
 def augment_fn(x, always=False, max_len=None):
-    if tf.random.uniform(()) < 0.7 or always:
-        x = resample(x, (0.75, 1.25))
+    if tf.random.uniform(()) < 0.4 or always:  # 40%
+        x = resample(x, (0.9, 1.1))
+    elif tf.random.uniform(()) < 0.5 or always:  # 30%
+        x = temporal_mask(x, (0.05, 0.1))
     if tf.random.uniform(()) < 0.75 or always:
-        x = spatial_random_affine(x)
+        x = spatial_random_affine(
+            x,
+            scale=(0.9, 1.1),
+            shear=(-0.1, 0.1),
+            shift=(-0.1, 0.1),
+            degree=(-5, 5),
+        )
     if tf.random.uniform(()) < 0.5 or always:
         x = spatial_mask(x, (0.05, 0.1))
-    if tf.random.uniform(()) < 0.5 or always:
-        x = spatial_mask(x)
     return x
