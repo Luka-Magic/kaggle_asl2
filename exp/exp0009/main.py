@@ -45,13 +45,16 @@ RAW_DATA_DIR = ROOT_DIR / 'data' / 'original_data'
 KAGGLE_DATA_DIR = ROOT_DIR / 'data' / 'kaggle_dataset'
 CREATE_DATA_DIR = ROOT_DIR / 'data' / 'created_data'
 SAVE_DIR = ROOT_DIR / 'outputs' / exp_name
+WANDB_DIR = ROOT_DIR / 'wandb' / exp_name
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
+WANDB_DIR.mkdir(parents=True, exist_ok=True)
 
 wandb.login()
 wandb.init(
     project="kaggle_asl2",
     name=exp_name,
     mode='disabled' if use_wandb == 'False' else 'online',
+    dir=WANDB_DIR,
 )
 
 with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
