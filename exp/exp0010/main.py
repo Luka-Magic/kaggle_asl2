@@ -396,13 +396,13 @@ def decode_fn(record_bytes):
     lpose = tf.reshape(tf.sparse.to_dense(x["lpose"]), (-1, 5, 3))
     phrase = tf.sparse.to_dense(x["phrase"])
 
-    # augmentation
-    n_landmark_list = [d.shape[1] for d in [lip, rhand, lhand, rpose, lpose]]
-    # 長さが一緒じゃないかもしれない
-    data = tf.concat([lip, rhand, lhand, rpose, lpose], axis=1)
-    data = augment_fn(data)
-    lip, rhand, lhand, rpose, lpose = tf.split(
-        data, n_landmark_list, axis=1)
+    # # augmentation
+    # n_landmark_list = [d.shape[1] for d in [lip, rhand, lhand, rpose, lpose]]
+    # # 長さが一緒じゃないかもしれない
+    # data = tf.concat([lip, rhand, lhand, rpose, lpose], axis=1)
+    # data = augment_fn(data)
+    # lip, rhand, lhand, rpose, lpose = tf.split(
+    #     data, n_landmark_list, axis=1)
 
     return lip, rhand, lhand, rpose, lpose, phrase
 
