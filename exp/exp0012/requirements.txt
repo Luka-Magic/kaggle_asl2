@@ -1,5 +1,0 @@
-hydra-core
-wandb
-python-Levenshtein
-tensorflow
-tensorflow-addons

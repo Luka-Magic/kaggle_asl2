@@ -1,3 +1,5 @@
+import wandb
+import sys
 import gc
 import json
 import math
@@ -18,10 +20,11 @@ import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
-RESTART = True
-best_epoch = 0
-best_score = 0.6925
+RESTART = False
+# best_epoch = 0
+# best_score = 0.6925
 # ====================================================
+use_wandb = sys.argv[1]
 
 SEED = 77
 
@@ -29,8 +32,8 @@ if DEBUG:
     N_EPOCHS = 2
     N_WARMUP_EPOCHS = 0
 else:
-    N_EPOCHS = 20
-    N_WARMUP_EPOCHS = 4
+    N_EPOCHS = 50
+    N_WARMUP_EPOCHS = 10
 LR_MAX = 1e-4
 WD_RATIO = 0.05
 WARMUP_METHOD = "exp"
@@ -43,6 +46,13 @@ KAGGLE_DATA_DIR = ROOT_DIR / 'data' / 'kaggle_dataset'
 CREATE_DATA_DIR = ROOT_DIR / 'data' / 'created_data'
 SAVE_DIR = ROOT_DIR / 'outputs' / exp_name
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
+
+wandb.login()
+wandb.init(
+    project="kaggle_asl2",
+    name=exp_name,
+    mode='disabled' if use_wandb == 'False' else 'online',
+)
 
 with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
     char_to_num = json.load(f)
@@ -759,6 +769,14 @@ class CallbackEval(tf.keras.callbacks.Callback):
             model.save_weights(SAVE_DIR / "best_model.h5")
             self.best_norm_ld_epoch = epoch
             update_flag = True
+            wandb.run.summary["best_norm_ld"] = self.best_norm_ld
+        wandb.log(
+            {
+                'epoch': epoch,
+                'valid_accuracy': valid_accuracy.avg,
+                'valid_norm_ld': valid_norm_ld.avg
+            }
+        )
         print('-*-' * 30)
         print(f'【EPOCH {epoch}/{N_EPOCHS}】')
         print(f'    n_data: {len(predictions)}')
