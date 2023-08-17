@@ -24,7 +24,7 @@ RESTART = False
 # best_epoch = 0
 # best_score = 0.6925
 # ====================================================
-use_wandb = sys.argv[1]
+use_wandb = int(sys.argv[1])
 
 SEED = 77
 
