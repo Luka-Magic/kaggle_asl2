@@ -34,7 +34,7 @@ if DEBUG:
 else:
     N_EPOCHS = 50
     N_WARMUP_EPOCHS = 10
-LR_MAX = 1e-4
+LR_MAX = 1e-3
 WD_RATIO = 0.05
 WARMUP_METHOD = "exp"
 
