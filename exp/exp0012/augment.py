@@ -46,7 +46,7 @@ def drop_random_frames(x, size=(0.05, 0.1), mask_value=float('nan')):
     mask_size = tf.cast(tf.cast(l, tf.float32) * mask_size, tf.int32)
     # choice random mask_size frames
     mask_random_frames = np.random.choice(
-        l, l - mask_size, replace=False)
+        int(l), int(l - mask_size), replace=False)
     x = tf.gather(x, mask_random_frames, axis=0)
     return x
 
