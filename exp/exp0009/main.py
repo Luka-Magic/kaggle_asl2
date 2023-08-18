@@ -643,9 +643,9 @@ def get_model(dim=384, num_blocks=6, drop_rate=0.4):
     x = tf.keras.layers.Masking(mask_value=0.0)(inp)
     if n_embed_layers == 2:
         x = tf.keras.layers.Dense(dim, name=f'stem_conv_1', use_bias=False,
-                                  kernel_initializer=tf.keras.initializers.glorot_uniform, activation=tf.keras.activations.gelu),
+                                  kernel_initializer=tf.keras.initializers.glorot_uniform, activation=tf.keras.activations.gelu)(x),
         x = tf.keras.layers.Dense(
-            dim, name=f'stem_conv_2', use_bias=False, kernel_initializer=tf.keras.initializers.he_uniform),
+            dim, name=f'stem_conv_2', use_bias=False, kernel_initializer=tf.keras.initializers.he_uniform)(x),
     else:
         x = tf.keras.layers.Dense(dim, use_bias=False, name='stem_conv')(x)
     pe = tf.cast(positional_encoding(INPUT_SHAPE[0], dim), dtype=x.dtype)
