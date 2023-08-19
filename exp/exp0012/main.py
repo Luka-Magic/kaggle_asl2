@@ -19,8 +19,9 @@ warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
 RESTART = True
-best_epoch = 37
-best_score = 0.6824
+best_epoch = 58
+best_score = 0.6887
+from_best_or_last = 'last'
 # ====================================================
 
 SEED = 77
@@ -801,7 +802,10 @@ if RESTART:
         'best_norm_ld_epoch': best_epoch,
     }
     # load best model
-    model.load_weights(SAVE_DIR / "best_model.h5")
+    if from_best_or_last == 'best':
+        model.load_weights(SAVE_DIR / "best_model.h5")
+    elif from_best_or_last == 'last':
+        model.load_weights(SAVE_DIR / "model.h5")
     training_epochs = N_EPOCHS - best_epoch
 
     validation_callback = CallbackEval(val_dataset, restart_info)
