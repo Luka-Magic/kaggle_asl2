@@ -20,9 +20,9 @@ import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
-RESTART = True
-best_epoch = 39
-best_score = 0.6888
+RESTART = False
+# best_epoch = 0
+# best_score = 0
 # ====================================================
 use_wandb = int(sys.argv[1])
 
