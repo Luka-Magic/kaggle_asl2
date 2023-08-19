@@ -19,8 +19,8 @@ warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
 RESTART = True
-best_epoch = 21
-best_score = 0.6499
+best_epoch = 37
+best_score = 0.6824
 # ====================================================
 
 SEED = 77
