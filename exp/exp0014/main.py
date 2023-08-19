@@ -642,7 +642,7 @@ def get_model(dim=384, num_blocks=6, drop_rate=0.4):
     inp = tf.keras.Input(INPUT_SHAPE)
     x = tf.keras.layers.Masking(mask_value=0.0)(inp)
     if n_embed_layers == 2:
-        x = tf.keras.layers.Dense(dim, name=f'stem_conv_1_1', use_bias=False,
+        x = tf.keras.layers.Dense(dim*2, name=f'stem_conv_1_1', use_bias=False,
                                   kernel_initializer=tf.keras.initializers.glorot_uniform, activation=tf.keras.activations.gelu)(x)
         x = tf.keras.layers.DepthwiseConv1D(3, strides=1, dilation_rate=1, padding='valid', use_bias=False,
                                             depthwise_initializer=tf.keras.initializers.glorot_uniform, name='stem_conv_1_2')(x)
