@@ -649,7 +649,7 @@ def get_model(dim=384, num_blocks=6, drop_rate=0.4):
         x = tf.keras.layers.Dense(dim, name=f'stem_conv_2_1', use_bias=False,
                                   kernel_initializer=tf.keras.initializers.he_uniform)(x)
         x = CausalDWConv1D(3, dilation_rate=1, use_bias=False,
-                           depthwise_initializer=tf.keras.initializers.glorot_uniform, name='stem_conv_1_2')(x)
+                           depthwise_initializer=tf.keras.initializers.glorot_uniform, name='stem_conv_2_2')(x)
     else:
         x = tf.keras.layers.Dense(dim, use_bias=False, name='stem_conv')(x)
     pe = tf.cast(positional_encoding(INPUT_SHAPE[0], dim), dtype=x.dtype)
