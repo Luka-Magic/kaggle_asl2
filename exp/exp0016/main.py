@@ -26,7 +26,6 @@ best_score = 0
 # ====================================================
 use_wandb = int(sys.argv[1])
 
-
 SEED = 77
 
 if DEBUG:
@@ -589,19 +588,20 @@ class MultiHeadSelfAttention(tf.keras.layers.Layer):
 def TransformerBlock(dim=256, num_heads=6, expand=4, attn_dropout=0.2, drop_rate=0.2, activation='swish'):
     def apply(inputs):
         x = inputs
-        x = tf.keras.layers.LayerNormalization(epsilon=1e-6)(x)
         x = MultiHeadSelfAttention(
             dim=dim, num_heads=num_heads, dropout=attn_dropout)(x)
         x = tf.keras.layers.Dropout(drop_rate, noise_shape=(None, 1, 1))(x)
         x = tf.keras.layers.Add()([inputs, x])
+        x = tf.keras.layers.LayerNormalization(epsilon=1e-6)(inputs)
         attn_out = x
 
-        x = tf.keras.layers.LayerNormalization(epsilon=1e-6)(x)
         x = tf.keras.layers.Dense(
             dim*expand, use_bias=False, activation=activation)(x)
         x = tf.keras.layers.Dense(dim, use_bias=False)(x)
         x = tf.keras.layers.Dropout(drop_rate, noise_shape=(None, 1, 1))(x)
         x = tf.keras.layers.Add()([attn_out, x])
+        x = tf.keras.layers.add([inputs, x])
+        x = tf.keras.layers.LayerNormalization(epsilon=1e-6)(x)
         return x
     return apply
 
@@ -654,17 +654,8 @@ def get_model(dim=384, num_blocks=6, drop_rate=0.4):
     x = tf.keras.layers.BatchNormalization(momentum=0.95, name='stem_bn')(x)
 
     for i in range(num_blocks):
-        if i == 0:
+        for _ in range(4):
             x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
-            x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
-            x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
-            x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
-        else:
-            for _ in range(4):
-                x = tf.keras.layers.Dense(dim, use_bias=False,
-                                          kernel_initializer=tf.keras.initializers.glorot_uniform, activation=tf.keras.activations.gelu)(x)
-                x = CausalDWConv1D(3, dilation_rate=1, use_bias=False,
-                                   depthwise_initializer=tf.keras.initializers.glorot_uniform, name=str(tf.keras.backend.get_uid("mbblock")))(x)
         x = TransformerBlock(dim, expand=2)(x)
 
     x = tf.keras.layers.Dense(dim*2, activation='relu', name='top_conv')(x)
