@@ -648,7 +648,7 @@ def get_model(dim=384, num_blocks=6, drop_rate=0.4):
         skip = x
         for _ in range(4):
             x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
-        x = MLPBlock(dim, expand=4)(x)
+        x = MLPBlock(dim, expand=2)(x)
         x = tf.keras.layers.add([skip, x])
         x = tf.keras.layers.LayerNormalization(epsilon=1e-6)(x)
 
