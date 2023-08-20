@@ -46,6 +46,7 @@ SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 with open(RAW_DATA_DIR / "character_to_prediction_index.json", "r") as f:
     char_to_num = json.load(f)
+
 seed_everything(SEED)
 
 pad_token = '^'
@@ -621,111 +622,6 @@ def CTCLoss(labels, logits):
     return loss
 
 
-num_to_char = {j: i for i, j in char_to_num.items()}
-chars = set(char_to_num.keys())
-
-
-def beam_search(mat):
-    """Beam search decoder.
-
-    See the paper of Hwang et al. and the paper of Graves et al.
-
-    Args:
-        mat: Output of neural network of shape TxC.
-        chars: The set of characters the neural network can recognize, excluding the CTC-blank.
-        beam_width: Number of beams kept per iteration.
-        lm: Character level language model if specified.
-
-    Returns:
-        The decoded text.
-    """
-    print(mat.shape)
-    beam_width = 5
-    step1_times = []
-    step2_times = []
-    step3_times = []
-    step4_times = []
-
-    blank_idx = len(chars)
-    max_T, max_C = mat.shape
-    blank_idx = pad_token_idx
-    last_chars_map = np.arange(max_C - 1)
-
-    # initialise beam state
-    labels = ['']
-    pr_blanks = np.array([1])
-    pr_totals = np.array([1])
-    pr_non_blanks = np.array([0])
-
-    new_pr_blanks = np.zeros((beam_width * (len(chars) + 1)))
-    new_pr_totals = np.zeros((beam_width * (len(chars) + 1)))
-    new_pr_non_blanks = np.zeros((beam_width * (len(chars) + 1)))
-
-    # go over all time-steps
-    for t in range(0, max_T):
-        # get beam-labelings of best beams
-        if len(labels) <= beam_width:
-            ixs = np.arange(len(labels))
-        else:
-            ixs = np.argpartition(pr_totals, -beam_width)[-beam_width:]
-
-        new_labels = []
-
-        # go over best beams
-        stored_ixs = []
-        for j, ix in enumerate(ixs):
-            # probability of paths ending with a non-blank
-            pr_non_blank = 0
-            # in case of non-empty beam
-            if len(labels[ix]) > 0:
-                # probability of paths with repeated last char at the end
-                pr_non_blank = pr_non_blanks[ix] * \
-                    mat[t, char_to_num[labels[ix][-1]]]
-
-            # probability of paths ending with a blank
-            pr_blank = pr_totals[ix] * mat[t, blank_idx]
-
-            # fill in data for current beam
-            new_labels.append(labels[ix])
-            new_pr_non_blanks[j * max_C] = pr_non_blank
-            new_pr_blanks[j * max_C] = pr_blank
-            new_pr_totals[j * max_C] = pr_blank + pr_non_blank
-
-            new_labeling = [labels[ix] + num_to_char[c]
-                            for c in range(max_C - 1)]
-
-            pr_non_blank = pr_totals[ix] * mat[t, last_chars_map]
-            if len(labels[ix]) > 0:
-                pr_non_blank[char_to_num[labels[ix][-1]]
-                             ] = pr_blanks[ix] * mat[t, char_to_num[labels[ix][-1]]]
-
-            new_labels += new_labeling
-            new_pr_non_blanks[j * max_C + 1:(j + 1) * max_C] = pr_non_blank
-            new_pr_totals[j * max_C + 1:(j + 1) * max_C] = pr_non_blank
-            new_pr_blanks[j * max_C + 1:(j + 1) * max_C] = 0
-
-        unique_labels, inverse = np.unique(
-            new_labels, return_inverse=True, axis=0)
-        label_count = unique_labels.shape[0]
-
-        pr_blanks = np.zeros(label_count)
-        pr_totals = np.zeros(label_count)
-        pr_non_blanks = np.zeros(label_count)
-
-        np.add.at(pr_blanks, inverse, new_pr_blanks[:len(new_labels)])
-        np.add.at(pr_totals, inverse, new_pr_totals[:len(new_labels)])
-        np.add.at(pr_non_blanks, inverse, new_pr_non_blanks[:len(new_labels)])
-
-        labels = np.array([label for label in unique_labels])
-
-    # sort by probability
-    best_labeling = labels[np.argmax(pr_totals)]
-
-    # map label string to char string
-    # return np.array([mapping[c] for c in best_labeling], dtype=np.int64)
-    return best_labeling
-
-
 n_embed_layers = 1
 
 
@@ -744,9 +640,10 @@ def get_model(dim=384, num_blocks=6, drop_rate=0.4):
     x = tf.keras.layers.BatchNormalization(momentum=0.95, name='stem_bn')(x)
 
     for i in range(num_blocks):
-        x = Conv1DBlock(dim, 11, drop_rate=drop_rate)(x)
-        x = Conv1DBlock(dim,  5, drop_rate=drop_rate)(x)
-        x = Conv1DBlock(dim,  3, drop_rate=drop_rate)(x)
+        x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
+        x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
+        x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
+        x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
         x = TransformerBlock(dim, expand=2)(x)
 
     x = tf.keras.layers.Dense(dim*2, activation='relu', name='top_conv')(x)
