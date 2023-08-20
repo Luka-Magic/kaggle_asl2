@@ -19,8 +19,8 @@ warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
 RESTART = True
-best_epoch = 78
-best_score = 0.6931
+best_epoch = 97
+best_score = 0.6958
 from_best_or_last = 'last'
 # ====================================================
 

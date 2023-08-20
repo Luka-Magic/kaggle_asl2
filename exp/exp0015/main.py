@@ -18,9 +18,9 @@ import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
-RESTART = False
-best_epoch = 0
-best_score = 0
+RESTART = True
+best_epoch = 23
+best_score = 0.6624
 # ====================================================
 
 SEED = 77
