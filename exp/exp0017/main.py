@@ -53,7 +53,7 @@ wandb.login()
 wandb.init(
     project="kaggle_asl2",
     name=exp_name,
-    mode='disabled' if use_wandb == 'False' else 'online',
+    mode='online' if use_wandb == 1 else 'disabled',
     dir=WANDB_DIR,
 )
 

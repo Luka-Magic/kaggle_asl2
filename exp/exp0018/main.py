@@ -53,7 +53,7 @@ wandb.login()
 wandb.init(
     project="kaggle_asl2",
     name=exp_name,
-    mode='disabled' if use_wandb == 'False' else 'online',
+    mode='online' if use_wandb == 1 else 'disabled',
     dir=WANDB_DIR,
 )
 
@@ -633,6 +633,9 @@ def get_model(dim=384, num_blocks=6, drop_rate=0.4):
 
     for i in range(num_blocks):
         expand = embed_dim_expand_list[i]
+        if i != 0:
+            x = tf.keras.layers.Dense(
+                dim*expand, activation='relu', name='top_conv')(x)
         skip = x
         for _ in range(4):
             x = Conv1DBlock(dim*expand, 3, drop_rate=drop_rate)(x)
