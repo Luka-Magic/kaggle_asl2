@@ -19,7 +19,7 @@ from augment import augment_fn
 import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
-DEBUG = True
+DEBUG = False
 RESTART = False
 best_epoch = 0
 best_score = 0
@@ -585,23 +585,14 @@ class MultiHeadSelfAttention(tf.keras.layers.Layer):
         return x
 
 
-def TransformerBlock(dim=256, num_heads=6, expand=4, attn_dropout=0.2, drop_rate=0.2, activation='swish'):
-    def apply(inputs):
-        x = inputs
-        x = MultiHeadSelfAttention(
-            dim=dim, num_heads=num_heads, dropout=attn_dropout)(x)
-        x = tf.keras.layers.Dropout(drop_rate, noise_shape=(None, 1, 1))(x)
-        x = tf.keras.layers.Add()([inputs, x])
-        x = tf.keras.layers.LayerNormalization(epsilon=1e-6)(inputs)
-        attn_out = x
-
+def MLPBlock(dim=256, expand=4, drop_rate=0.2, activation='swish'):
+    def apply(x):
+        skip = x
         x = tf.keras.layers.Dense(
             dim*expand, use_bias=False, activation=activation)(x)
         x = tf.keras.layers.Dense(dim, use_bias=False)(x)
         x = tf.keras.layers.Dropout(drop_rate, noise_shape=(None, 1, 1))(x)
-        x = tf.keras.layers.Add()([attn_out, x])
-        x = tf.keras.layers.add([inputs, x])
-        x = tf.keras.layers.LayerNormalization(epsilon=1e-6)(x)
+        x = tf.keras.layers.Add()([skip, x])
         return x
     return apply
 
@@ -654,9 +645,12 @@ def get_model(dim=384, num_blocks=6, drop_rate=0.4):
     x = tf.keras.layers.BatchNormalization(momentum=0.95, name='stem_bn')(x)
 
     for i in range(num_blocks):
+        skip = x
         for _ in range(4):
             x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
-        x = TransformerBlock(dim, expand=2)(x)
+        x = MLPBlock(dim, expand=4)(x)
+        x = tf.keras.layers.add([skip, x])
+        x = tf.keras.layers.LayerNormalization(epsilon=1e-6)(x)
 
     x = tf.keras.layers.Dense(dim*2, activation='relu', name='top_conv')(x)
     x = tf.keras.layers.Dropout(drop_rate)(x)
