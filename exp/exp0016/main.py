@@ -20,9 +20,9 @@ import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
-RESTART = False
-best_epoch = 0
-best_score = 0
+RESTART = True
+best_epoch = 8
+best_score = 0.5195
 # ====================================================
 use_wandb = int(sys.argv[1])
 
@@ -32,7 +32,7 @@ if DEBUG:
     N_EPOCHS = 2
     N_WARMUP_EPOCHS = 0
 else:
-    N_EPOCHS = 100
+    N_EPOCHS = 50
     N_WARMUP_EPOCHS = 10
 LR_MAX = 1e-3
 WD_RATIO = 0.05
