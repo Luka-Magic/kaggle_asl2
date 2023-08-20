@@ -32,7 +32,7 @@ if DEBUG:
     N_EPOCHS = 2
     N_WARMUP_EPOCHS = 0
 else:
-    N_EPOCHS = 50
+    N_EPOCHS = 100
     N_WARMUP_EPOCHS = 10
 LR_MAX = 1e-3
 WD_RATIO = 0.05
