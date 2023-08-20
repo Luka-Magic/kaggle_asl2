@@ -19,10 +19,10 @@ from augment import augment_fn
 import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
-DEBUG = False
-RESTART = True
-best_epoch = 10
-best_score = 0.5609
+DEBUG = True
+RESTART = False
+best_epoch = 0
+best_score = 0
 # ====================================================
 use_wandb = int(sys.argv[1])
 
@@ -654,10 +654,17 @@ def get_model(dim=384, num_blocks=6, drop_rate=0.4):
     x = tf.keras.layers.BatchNormalization(momentum=0.95, name='stem_bn')(x)
 
     for i in range(num_blocks):
-        x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
-        x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
-        x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
-        x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
+        if i == 0:
+            x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
+            x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
+            x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
+            x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
+        else:
+            for _ in range(4):
+                x = tf.keras.layers.Dense(dim, use_bias=False,
+                                          kernel_initializer=tf.keras.initializers.glorot_uniform, activation=tf.keras.activations.gelu)(x)
+                x = CausalDWConv1D(3, dilation_rate=1, use_bias=False,
+                                   depthwise_initializer=tf.keras.initializers.glorot_uniform, name=str(tf.keras.backend.get_uid("mbblock")))(x)
         x = TransformerBlock(dim, expand=2)(x)
 
     x = tf.keras.layers.Dense(dim*2, activation='relu', name='top_conv')(x)
@@ -842,16 +849,16 @@ lr_callback = tf.keras.callbacks.LearningRateScheduler(
     lambda step: LR_SCHEDULE[step], verbose=0)
 
 
-# history = model.fit(
-#     train_dataset,
-#     # validation_data=val_dataset,
-#     epochs=training_epochs,
-#     callbacks=[
-#         validation_callback,
-#         lr_callback,
-#         WeightDecayCallback(),
-#     ]
-# )
+history = model.fit(
+    train_dataset,
+    # validation_data=val_dataset,
+    epochs=training_epochs,
+    callbacks=[
+        validation_callback,
+        lr_callback,
+        WeightDecayCallback(),
+    ]
+)
 
 # load best model
 model.load_weights(SAVE_DIR / "best_model.h5")
