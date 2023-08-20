@@ -20,9 +20,9 @@ import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
-RESTART = True
-best_epoch = 20
-best_score = 0.6542
+RESTART = False
+best_epoch = 0
+best_score = 0
 # ====================================================
 use_wandb = int(sys.argv[1])
 
@@ -597,19 +597,6 @@ def MLPBlock(dim=256, expand=4, drop_rate=0.2, activation='swish'):
     return apply
 
 
-def positional_encoding(maxlen, num_hid):
-    depth = num_hid/2
-    positions = tf.range(maxlen, dtype=tf.float32)[..., tf.newaxis]
-    depths = tf.range(depth, dtype=tf.float32)[np.newaxis, :]/depth
-    angle_rates = tf.math.divide(1, tf.math.pow(
-        tf.cast(10000, tf.float32), depths))
-    angle_rads = tf.linalg.matmul(positions, angle_rates)
-    pos_encoding = tf.concat(
-        [tf.math.sin(angle_rads), tf.math.cos(angle_rads)],
-        axis=-1)
-    return pos_encoding
-
-
 def CTCLoss(labels, logits):
     label_length = tf.reduce_sum(
         tf.cast(labels != pad_token_idx, tf.int32), axis=-1)
@@ -639,20 +626,22 @@ def get_model(dim=384, num_blocks=6, drop_rate=0.4):
         x = tf.keras.layers.Dense(
             dim, name=f'stem_conv_2', use_bias=False, kernel_initializer=tf.keras.initializers.he_uniform),
     else:
-        x = tf.keras.layers.Dense(dim, use_bias=False, name='stem_conv')(x)
-    pe = tf.cast(positional_encoding(INPUT_SHAPE[0], dim), dtype=x.dtype)
-    x = x + pe
+        x = tf.keras.layers.Dense(dim*4, use_bias=False, name='stem_conv')(x)
     x = tf.keras.layers.BatchNormalization(momentum=0.95, name='stem_bn')(x)
 
+    embed_dim_expand_list = [4, 2, 2, 1, 1, 1]
+
     for i in range(num_blocks):
+        expand = embed_dim_expand_list[i]
         skip = x
         for _ in range(4):
-            x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
-        x = MLPBlock(dim, expand=2)(x)
+            x = Conv1DBlock(dim*expand, 3, drop_rate=drop_rate)(x)
+        # x = MLPBlock(dim, expand=1)(x)
         x = tf.keras.layers.add([skip, x])
-        x = tf.keras.layers.LayerNormalization(epsilon=1e-6)(x)
+        x = tf.keras.layers.BatchNormalization(
+            momentum=0.95, name='block_bn')(x)
 
-    x = tf.keras.layers.Dense(dim*2, activation='relu', name='top_conv')(x)
+    x = tf.keras.layers.Dense(dim, activation='relu', name='top_conv')(x)
     x = tf.keras.layers.Dropout(drop_rate)(x)
     x = tf.keras.layers.Dense(len(char_to_num), name='classifier')(x)
 
