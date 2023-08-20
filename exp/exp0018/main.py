@@ -635,14 +635,14 @@ def get_model(dim=384, num_blocks=6, drop_rate=0.4):
         expand = embed_dim_expand_list[i]
         if i != 0:
             x = tf.keras.layers.Dense(
-                dim*expand, activation='relu', name='top_conv')(x)
+                dim*expand, activation='relu', name=f'block_dense_{i}')(x)
         skip = x
         for _ in range(4):
             x = Conv1DBlock(dim*expand, 3, drop_rate=drop_rate)(x)
         # x = MLPBlock(dim, expand=1)(x)
         x = tf.keras.layers.add([skip, x])
         x = tf.keras.layers.BatchNormalization(
-            momentum=0.95, name='block_bn')(x)
+            momentum=0.95, name=f'block_bn_{i}')(x)
 
     x = tf.keras.layers.Dense(dim, activation='relu', name='top_conv')(x)
     x = tf.keras.layers.Dropout(drop_rate)(x)
