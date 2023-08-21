@@ -626,10 +626,10 @@ def get_model(dim=256, num_blocks=6, drop_rate=0.4):
         x = tf.keras.layers.Dense(
             dim, name=f'stem_conv_2', use_bias=False, kernel_initializer=tf.keras.initializers.he_uniform),
     else:
-        x = tf.keras.layers.Dense(dim*4, use_bias=False, name='stem_conv')(x)
+        x = tf.keras.layers.Dense(dim*2, use_bias=False, name='stem_conv')(x)
     x = tf.keras.layers.BatchNormalization(momentum=0.95, name='stem_bn')(x)
 
-    embed_dim_expand_list = [2, 2, 1, 1, 1, 1]
+    embed_dim_expand_list = [2, 2, 2, 1, 1, 1]
 
     for i in range(num_blocks):
         expand = embed_dim_expand_list[i]
