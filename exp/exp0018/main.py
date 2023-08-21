@@ -617,7 +617,7 @@ def CTCLoss(labels, logits):
 n_embed_layers = 1
 
 
-def get_model(dim=384, num_blocks=6, drop_rate=0.4):
+def get_model(dim=256, num_blocks=6, drop_rate=0.4):
     inp = tf.keras.Input(INPUT_SHAPE)
     x = tf.keras.layers.Masking(mask_value=0.0)(inp)
     if n_embed_layers == 2:
@@ -629,7 +629,7 @@ def get_model(dim=384, num_blocks=6, drop_rate=0.4):
         x = tf.keras.layers.Dense(dim*4, use_bias=False, name='stem_conv')(x)
     x = tf.keras.layers.BatchNormalization(momentum=0.95, name='stem_bn')(x)
 
-    embed_dim_expand_list = [1, 1, 1, 1, 1, 1]
+    embed_dim_expand_list = [2, 2, 1, 1, 1, 1]
 
     for i in range(num_blocks):
         expand = embed_dim_expand_list[i]
