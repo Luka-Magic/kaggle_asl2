@@ -19,8 +19,8 @@ from augment import augment_fn
 import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
-RESTART = True
-best_epoch = 7
+RESTART = False
+best_epoch = 0
 best_score = 0
 # ====================================================
 use_wandb = int(sys.argv[1])
@@ -33,8 +33,8 @@ if DEBUG:
     N_WARMUP_EPOCHS = 0
 else:
     N_EPOCHS = 50
-    N_WARMUP_EPOCHS = 10
-LR_MAX = 1e-3
+    N_WARMUP_EPOCHS = 0
+LR_MAX = 1e-2
 WD_RATIO = 0.05
 WARMUP_METHOD = "exp"
 
