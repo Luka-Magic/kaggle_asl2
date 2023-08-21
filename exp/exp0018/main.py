@@ -19,12 +19,12 @@ from augment import augment_fn
 import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
-DEBUG = False
 RESTART = False
 best_epoch = 0
 best_score = 0
 # ====================================================
 use_wandb = int(sys.argv[1])
+DEBUG = True if int(sys.argv[2]) == 1 else False
 
 SEED = 77
 
