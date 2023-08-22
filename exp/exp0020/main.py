@@ -20,7 +20,7 @@ import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
-RESTART = False
+RESTART = True
 best_epoch = 18
 best_score = 0.6421
 # ====================================================
