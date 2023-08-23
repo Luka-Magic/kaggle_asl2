@@ -20,9 +20,9 @@ import warnings
 warnings.filterwarnings('ignore')
 # ====================================================
 DEBUG = False
-RESTART = True
-best_epoch = 94
-best_score = 0.6968
+RESTART = False
+# best_epoch = 94
+# best_score = 0.6968
 # ====================================================
 use_wandb = int(sys.argv[1])
 
@@ -834,16 +834,16 @@ lr_callback = tf.keras.callbacks.LearningRateScheduler(
     lambda step: LR_SCHEDULE[step], verbose=0)
 
 
-history = model.fit(
-    train_dataset,
-    # validation_data=val_dataset,
-    epochs=training_epochs,
-    callbacks=[
-        validation_callback,
-        lr_callback,
-        WeightDecayCallback(),
-    ]
-)
+# history = model.fit(
+#     train_dataset,
+#     # validation_data=val_dataset,
+#     epochs=training_epochs,
+#     callbacks=[
+#         validation_callback,
+#         lr_callback,
+#         WeightDecayCallback(),
+#     ]
+# )
 
 # load best model
 model.load_weights(SAVE_DIR / "best_model.h5")
