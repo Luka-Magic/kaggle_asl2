@@ -574,11 +574,11 @@ class MultiHeadSelfAttention(tf.keras.layers.Layer):
 
 def TransformerBlock(dim=256, num_heads=6, expand=4, attn_dropout=0.2, drop_rate=0.2, activation='swish'):
     def apply(inputs):
-        x = inputs
-        x = MultiHeadSelfAttention(
-            dim=dim, num_heads=num_heads, dropout=attn_dropout)(x)
-        x = tf.keras.layers.Dropout(drop_rate, noise_shape=(None, 1, 1))(x)
-        x = tf.keras.layers.Add()([inputs, x])
+        # x = inputs
+        # x = MultiHeadSelfAttention(
+        #     dim=dim, num_heads=num_heads, dropout=attn_dropout)(x)
+        # x = tf.keras.layers.Dropout(drop_rate, noise_shape=(None, 1, 1))(x)
+        # x = tf.keras.layers.Add()([inputs, x])
         x = tf.keras.layers.LayerNormalization(epsilon=1e-6)(inputs)
         attn_out = x
 

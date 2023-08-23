@@ -33,8 +33,8 @@ if DEBUG:
     N_WARMUP_EPOCHS = 0
 else:
     N_EPOCHS = 120
-    N_WARMUP_EPOCHS = 94
-LR_MAX = 1.2e-5
+    N_WARMUP_EPOCHS = 10
+LR_MAX = 1e-3
 WD_RATIO = 0.05
 WARMUP_METHOD = "exp"
 
@@ -630,7 +630,7 @@ def CTCLoss(labels, logits):
 n_embed_layers = 1
 
 
-def get_model(dim=384, num_blocks=6, drop_rate=0.4):
+def get_model(dim=384, num_blocks=8, drop_rate=0.4):
     inp = tf.keras.Input(INPUT_SHAPE)
     x = tf.keras.layers.Masking(mask_value=0.0)(inp)
     if n_embed_layers == 2:
@@ -640,19 +640,15 @@ def get_model(dim=384, num_blocks=6, drop_rate=0.4):
             dim, name=f'stem_conv_2', use_bias=False, kernel_initializer=tf.keras.initializers.he_uniform),
     else:
         x = tf.keras.layers.Dense(dim, use_bias=False, name='stem_conv')(x)
-    # pe = tf.cast(positional_encoding(INPUT_SHAPE[0], dim), dtype=x.dtype)
-    # x = x + pe
     x = tf.keras.layers.BatchNormalization(momentum=0.95, name='stem_bn')(x)
 
     for i in range(num_blocks):
-        skip = x
-        for _ in range(4):
-            x = Conv1DBlock(dim, 3, drop_rate=drop_rate)(x)
+        x = Conv1DBlock(dim, 11, drop_rate=drop_rate)(x)
+        x = Conv1DBlock(dim,  5, drop_rate=drop_rate)(x)
+        x = Conv1DBlock(dim,  3, drop_rate=drop_rate)(x)
         x = MLPBlock(dim, expand=2)(x)
-        x = tf.keras.layers.add([skip, x])
-        x = tf.keras.layers.LayerNormalization(epsilon=1e-6)(x)
 
-    x = tf.keras.layers.Dense(dim*2, activation='relu', name='top_conv')(x)
+    x = tf.keras.layers.Dense(dim*2, activation='swish', name='top_conv')(x)
     x = tf.keras.layers.Dropout(drop_rate)(x)
     x = tf.keras.layers.Dense(len(char_to_num), name='classifier')(x)
 
