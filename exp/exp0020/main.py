@@ -679,6 +679,16 @@ def num_to_char_fn(y):
     return [num_to_char.get(x, "") for x in y]
 
 
+# @tf.function()
+# def decode_phrase(pred):
+#     x = tf.argmax(pred, axis=1)
+#     diff = tf.not_equal(x[:-1], x[1:])
+#     adjacent_indices = tf.where(diff)[:, 0]
+#     x = tf.gather(x, adjacent_indices)
+#     mask = x != pad_token_idx
+#     x = tf.boolean_mask(x, mask, axis=0)
+#     return x
+
 @tf.function()
 def decode_phrase(pred):
     x = tf.argmax(pred, axis=1)
@@ -869,8 +879,8 @@ class TFLiteModel(tf.Module):
         x = self.model(x, training=False)
         x = x[0]
         x = decode_phrase(x)
-        x = tf.cond(tf.shape(x)[0] == 0, lambda: tf.zeros(
-            1, tf.int64), lambda: tf.identity(x))
+        x = tf.cond(tf.shape(x)[0] < 3, lambda: tf.constant(
+            [17, 0, 32, 12, 36, 0, 12, 32, 49, 46, 36], tf.int64), lambda: tf.identity(x))
         x = tf.one_hot(x, 59)
         return {'outputs': x}
 
